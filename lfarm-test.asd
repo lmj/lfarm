@@ -28,6 +28,10 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#+(or sbcl ccl allegro lispworks)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (pushnew :lfarm.with-closures *features*))
+
 (defsystem :lfarm-test
   :description
   "Test suite of lfarm, a library for distributing work across machines."
@@ -40,12 +44,12 @@
                :lfarm-launcher
                :lfarm-admin)
   :serial t
-  :components ((:file "1am")
-               (:file "lfarm-test")))
+  :components ((:module "lfarm-test"
+                :serial t
+                :components ((:file "1am")
+                             (:file "core-test")
+#+lfarm.with-closures        (:file "closure-test")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lfarm-test))))
   (declare (ignore o c))
   (funcall (intern (string '#:execute) :lfarm-test)))
-
-#+abcl
-(pushnew :lfarm-test.without-remote *features*)

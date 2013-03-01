@@ -28,38 +28,23 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-common)
+(in-package #:lfarm-client)
 
-(defmacro import-now (&rest symbols)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (import ',symbols)))
+(defun named-lambda-form (name lambda-list body)
+  (let ((args (make-symbol (string 'args))))
+    `(lambda (&rest ,args)
+       (labels ((,name ,lambda-list ,@body))
+         (apply #',name ,args)))))
 
-(defmacro alias-macro (alias orig)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (setf (macro-function ',alias) (macro-function ',orig))
-     ',alias))
+(defun regular-lambda-form (lambda-list body)
+  `(lambda ,lambda-list ,@body))
 
-(alias-macro with-gensyms alexandria:with-gensyms)
-(alias-macro when-let alexandria:when-let)
-(alias-macro when-let* alexandria:when-let*)
-(alias-macro named-lambda alexandria:named-lambda)
+(defun lambda-form (name lambda-list body)
+  (if name
+      `',(named-lambda-form name lambda-list body)
+      `',(regular-lambda-form lambda-list body)))
 
-(defmacro repeat (n &body body)
-  `(loop :repeat ,n :do (progn ,@body)))
-
-(defmacro with-tag (retry-tag &body body)
-  "For those of us who forget RETURN-FROM inside TAGBODY."
-  (with-gensyms (top)
-    `(block ,top
-       (tagbody
-          ,retry-tag
-          (return-from ,top (progn ,@body))))))
-
-(defmacro dosequence ((var sequence &optional return) &body body)
-  `(block nil
-     (map nil (lambda (,var) ,@body) ,sequence)
-     ,@(if return
-           `((let ((,var nil))
-               (declare (ignorable ,var))
-               ,return))
-           nil)))
+#-lfarm.with-closures
+(defun serialize-lambda (lambda-list body env &key name)
+  (declare (ignore env))
+  (lambda-form name lambda-list body))

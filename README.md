@@ -16,9 +16,8 @@ lfarm is known to run on ABCL, Allegro, Clozure, LispWorks, and SBCL.
 ### Kernel
 
 In lparallel a _kernel_ was defined as abstract entity that schedules
-and executes tasks, which happened to be implemented with a pool of
-worker threads. lfarm implements it with a set of servers that execute
-tasks.
+and executes tasks. lparallel implements it with a thread pool, while
+in lfarm it is implemented with a set of servers that execute tasks.
 
     ;; Create two servers bound to ports 11111 and 22222.
     (ql:quickload :lfarm-server)
@@ -79,28 +78,19 @@ servers.
 
     (broadcast-task #'ql:quickload :my-stuff)
 
+Limited support for closures is available on SBCL, CCL, LispWorks, and
+Allegro. Lexical variables and symbol macrolets are captured, but
+`flet` functions are not.
+
+Tasks are not macroexpanded in order to ensure portability across
+clients and servers.
+
 ### Serialization
 
 Serialization is done with
 [cl-store](http://common-lisp.net/project/cl-store/). It uses a
 portable serialization format, allowing lfarm clients and servers to
 run on different Lisp implementations.
-
-Closures are _not_ serialized.
-
-    (let ((x 1)
-          (channel (make-channel)))
-      (submit-task channel (lambda () (+ x 2)))
-      (receive-result channel))
-    ;; => error: X is unbound
-
-Pass data through arguments instead,
-
-    (let ((x 1)
-          (channel (make-channel)))
-      (submit-task channel (lambda (x) (+ x 2)) x)
-      (receive-result channel))
-    ;; => 3
 
 ### Security
 

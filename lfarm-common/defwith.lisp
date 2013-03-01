@@ -37,15 +37,18 @@
   (defun strip-aux (lambda-list)
     (subseq lambda-list 0 (position '&aux lambda-list)))
 
-  (defun params (lambda-list)
-    (multiple-value-bind (reqs opts rest keys)
+  (defun lambda-list-parameters (lambda-list &key discard-aux)
+    (multiple-value-bind (reqs opts rest keys other auxs)
         (alexandria:parse-ordinary-lambda-list lambda-list)
+      (declare (ignore other))
       (remove-if #'null (append reqs
                                 (mapcar #'first opts)
                                 (mapcar #'third opts)
                                 (list rest)
                                 (mapcar #'cadar keys)
-                                (mapcar #'third keys))))))
+                                (mapcar #'third keys)
+                                (unless discard-aux
+                                  (mapcar #'first auxs)))))))
 
 (defmacro flet-alias ((name fn) &body body)
   `(flet ((,name (&rest args)
@@ -64,13 +67,14 @@
            ,@body)))))
 
 (defmacro define-with-macro (macro-name fn-name lambda-list vars doc)
-  (let ((macro-params (append vars (params lambda-list))))
+  (let* ((ignore-params (lambda-list-parameters lambda-list :discard-aux t))
+         (macro-params (append vars ignore-params)))
     (alexandria:with-gensyms (whole body)
       `(defmacro ,macro-name (,@(when macro-params `(&whole ,whole))
                               ,@(unsplice `(,@vars ,@lambda-list))
                               &body ,body)
          ,@(unsplice doc)
-         (declare (ignore ,@(params lambda-list)))
+         (declare (ignore ,@ignore-params))
          `(,',fn-name (lambda (,,@vars) ,@,body)
                       ,@,(when macro-params
                            `(subseq (second ,whole) ,(length vars))))))))

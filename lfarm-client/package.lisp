@@ -28,38 +28,49 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-common)
-
-(defmacro import-now (&rest symbols)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (import ',symbols)))
-
-(defmacro alias-macro (alias orig)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (setf (macro-function ',alias) (macro-function ',orig))
-     ',alias))
-
-(alias-macro with-gensyms alexandria:with-gensyms)
-(alias-macro when-let alexandria:when-let)
-(alias-macro when-let* alexandria:when-let*)
-(alias-macro named-lambda alexandria:named-lambda)
-
-(defmacro repeat (n &body body)
-  `(loop :repeat ,n :do (progn ,@body)))
-
-(defmacro with-tag (retry-tag &body body)
-  "For those of us who forget RETURN-FROM inside TAGBODY."
-  (with-gensyms (top)
-    `(block ,top
-       (tagbody
-          ,retry-tag
-          (return-from ,top (progn ,@body))))))
-
-(defmacro dosequence ((var sequence &optional return) &body body)
-  `(block nil
-     (map nil (lambda (,var) ,@body) ,sequence)
-     ,@(if return
-           `((let ((,var nil))
-               (declare (ignorable ,var))
-               ,return))
-           nil)))
+(defpackage #:lfarm-client
+  (:documentation
+   "Encompasses the scheduling and execution of remote tasks by
+    connecting to a set of servers.")
+  (:nicknames #:lfarm)
+  (:use #:cl
+        #:lfarm-common)
+  (:export #:make-kernel
+           #:check-kernel
+           #:end-kernel
+           #:kernel-worker-count
+           #:kernel-name)
+  (:export #:make-channel
+           #:submit-task
+           #:submit-timeout
+           #:cancel-timeout
+           #:receive-result
+           #:try-receive-result
+           #:do-fast-receives
+           #:kill-tasks
+           #:task-categories-running)
+  (:export #:*kernel*
+           #:*kernel-spin-count*
+           #:*task-category*
+           #:*task-priority*
+           #:*debug-tasks-p*)
+  (:export #:kernel
+           #:channel
+           #:no-kernel-error
+           #:kernel-creation-error
+           #:task-killed-error)
+  ;; specific to lfarm
+  (:export #:deftask
+           #:deftask*
+           #:submit-task*
+           #:broadcast-task
+           #:broadcast-task*
+           #:task-execution-error
+           #:invalid-task-error)
+  ;; present in lparallel.kernel but not available in lfarm
+  #+(or)
+  (:export #:kernel-bindings
+           #:kernel-context
+           #:task-handler-bind
+           #:transfer-error
+           #:invoke-transfer-error))

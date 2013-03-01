@@ -28,53 +28,6 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lfarm-client
-  (:documentation
-   "Encompasses the scheduling and execution of remote tasks by
-    connecting to a set of servers.")
-  (:nicknames #:lfarm)
-  (:use #:cl
-        #:lfarm-common)
-  (:export #:make-kernel
-           #:check-kernel
-           #:end-kernel
-           #:kernel-worker-count
-           #:kernel-name)
-  (:export #:make-channel
-           #:submit-task
-           #:submit-timeout
-           #:cancel-timeout
-           #:receive-result
-           #:try-receive-result
-           #:do-fast-receives
-           #:kill-tasks
-           #:task-categories-running)
-  (:export #:*kernel*
-           #:*kernel-spin-count*
-           #:*task-category*
-           #:*task-priority*
-           #:*debug-tasks-p*)
-  (:export #:kernel
-           #:channel
-           #:no-kernel-error
-           #:kernel-creation-error
-           #:task-killed-error)
-  ;; specific to lfarm
-  (:export #:deftask
-           #:deftask*
-           #:submit-task*
-           #:broadcast-task
-           #:broadcast-task*
-           #:task-execution-error
-           #:invalid-task-error)
-  ;; present in lparallel.kernel but not available in lfarm
-  #+(or)
-  (:export #:kernel-bindings
-           #:kernel-context
-           #:task-handler-bind
-           #:transfer-error
-           #:invoke-transfer-error))
-
 (in-package #:lfarm-client)
 
 (import-now alexandria:simple-style-warning
@@ -249,8 +202,8 @@ priority. Default value is `:default'.")
 ;;;; kernel
 
 (defun worker-context (worker-loop)
-  (info "new worker")
   (with-errors-logged
+    (info "new worker")
     (destructuring-bind (*host* *port*) (pop-queue *addresses-queue*)
       (info "worker got address" *host* *port*)
       (let ((*connection* (make-connection *host* *port*)))
@@ -282,9 +235,8 @@ priority. Default value is `:default'.")
 `name' is a string for identifying the connection threads."
   (let* ((addresses (ensure-addresses addresses))
          (addresses-queue (make-queue/fill addresses))
-         (address-count (length addresses))
          (internal-kernel (make-internal-kernel
-                           address-count
+                           (length addresses)
                            :bindings (make-bindings addresses-queue)
                            :context #'worker-context
                            :name name)))
@@ -326,11 +278,15 @@ MAKE-KERNEL and STORE-VALUE restarts. Returns `*kernel*'."
 
 ;;;; tasks
 
-(defmacro deftask* (name lambda-list &body body)
+(defconstant +make-named-lambda-key+ 'make-named-lambda-key)
+
+(defmacro deftask* (name lambda-list &body body &environment env)
   "Same as `deftask' except the function is not compiled locally."
   `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (setf (get ',name 'lambda-form)
-           '(named-lambda ,name ,lambda-list ,@body))
+     (setf (get ',name +make-named-lambda-key+)
+           ;; Wrap this inside a lambda in order to obtain the latest
+           ;; lexicals on each submit-task.
+           (lambda () ,(serialize-lambda lambda-list body env :name name)))
      ',name))
 
 (defmacro deftask (name lambda-list &body body)
@@ -342,13 +298,10 @@ it may be submitted as a remote task."
 
 (defun maybe-convert-symbol (form)
   (typecase form
-    (symbol (or (get form 'lambda-form)
-                form))))
-
-(defun lambda-form-p (form)
-  (typecase form
-    (cons (case (first form)
-            (lambda form)))))
+    (symbol (let ((make-named-lambda (get form +make-named-lambda-key+)))
+              (if make-named-lambda
+                  (funcall make-named-lambda)
+                  form)))))
 
 (defun ensure-lambda-form (form)
   (if (lambda-form-p form)
@@ -621,19 +574,29 @@ each time with the result bound to `result'."
   (or (strip-sharp-quote form)
       form))
 
-(defun quote-lambda (form)
+(defun lambda-form-p (form)
   (typecase form
     (cons (case (first form)
-            (lambda `',form)))))
+            (lambda t)))))
 
 (defun maybe-quote-lambda (form)
-  (or (quote-lambda form)
+  (if (lambda-form-p form)
+      `',form
       form))
 
-(defun convert-task-form (form)
-  (maybe-quote-lambda (maybe-strip-sharp-quote form)))
+(defun maybe-serialize-lambda (form env)
+  (if (lambda-form-p form)
+      (destructuring-bind (lambda-list &body body) (rest form)
+        (serialize-lambda lambda-list body env))
+      form))
 
-(defmacro submit-task (channel task &rest args)
+(defun convert-task-form (form env)
+  (maybe-quote-lambda
+   (maybe-serialize-lambda
+    (maybe-strip-sharp-quote form)
+    env)))
+
+(defmacro submit-task (channel task &rest args &environment env)
   "Submit a task and its arguments through `channel'. `task' must be a
 lambda form, a function defined by `deftask', or a function that
 exists on the servers.
@@ -646,9 +609,9 @@ exists on the servers.
 with the result being passed to `submit-task*'. This provides the
 semblance of function syntax when referring to remotely executed
 code."
-  `(submit-task* ,channel ,(convert-task-form task) ,@args))
+  `(submit-task* ,channel ,(convert-task-form task env) ,@args))
 
-(defmacro broadcast-task (task &rest args)
+(defmacro broadcast-task (task &rest args &environment env)
   "Same as `submit-task' except the task is executed on every server.
 A possible use for this might be to load common code onto servers."
-  `(broadcast-task* ,(convert-task-form task) ,@args))
+  `(broadcast-task* ,(convert-task-form task env) ,@args))

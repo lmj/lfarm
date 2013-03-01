@@ -49,7 +49,7 @@
 
 ;;;; util
 
-(defwith ignore-errors* ()
+(defwith ignore-errors/log ()
   (handler-case (call-body)
     (error (err)
       (info "ignoring error" err)
@@ -60,7 +60,7 @@
     (connection-aborted-error ())))
 
 (defun socket-close* (socket)
-  (ignore-errors* (socket-close socket)))
+  (ignore-errors/log (socket-close socket)))
 
 (defwith with-close-on-abort (socket)
   (unwind-protect/safe
@@ -193,28 +193,16 @@ closure in which those variables are bound to the captured values."
       (cons (destructuring-bind (id . thread) elem
               (when (eql id task-category-id)
                 (info "killing task loop" id thread)
-                (ignore-errors* (destroy-thread thread)))))
+                (ignore-errors/log (destroy-thread thread)))))
       (null)
       (symbol (assert (eq elem +idle+))))))
 
 ;;;; task loop
 
-(defun named-lambda->lambda (form)
-  (destructuring-bind (name lambda-list &rest body) form
-    (with-gensyms (args)
-      `(lambda (&rest ,args)
-         (labels ((,name ,lambda-list ,@body))
-           (apply (function ,name) ,args))))))
-
-(defun maybe-convert-named-lambda (form)
-  (ecase (first form)
-    (lambda form)
-    (named-lambda (named-lambda->lambda (rest form)))))
-
 (defun maybe-compile (fn-form)
   (etypecase fn-form
     (symbol fn-form)
-    (cons (compile nil (maybe-convert-named-lambda fn-form)))))
+    (cons (compile nil fn-form))))
 
 (defun exec-task (task)
   (destructuring-bind (task-category-id fn-form &rest args) task
@@ -258,7 +246,7 @@ closure in which those variables are bound to the captured values."
              (return-from task-loop))
            (corrupt-handler (err)
              (info "corrupted stream" err stream)
-             (ignore-errors* (serialize :corrupt stream))
+             (ignore-errors/log (serialize :corrupt stream))
              (go :next-task))
            (next-task ()
              (go :next-task)))

@@ -28,6 +28,10 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#+(or sbcl ccl allegro lispworks)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (pushnew :lfarm.with-closures *features*))
+
 (defsystem :lfarm-client
   :description
   "Client component of lfarm, a library for distributing work across machines."
@@ -37,9 +41,16 @@
   :author "James M. Lawrence <llmjjmll@gmail.com>"
   :depends-on (:usocket
                :lparallel
-               :lfarm-common)
+               :lfarm-common
+               #+lfarm.with-hu-walker
+               :hu.dwim.walker)
   :serial t
-  :components ((:file "lfarm-client")))
+  :components ((:module "lfarm-client"
+                :serial t
+                :components ((:file "package")
+                             (:file "lambda")
+#+lfarm.with-closures        (:file "closure")
+                             (:file "core")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lfarm-client))))
   (declare (ignore o c))

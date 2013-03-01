@@ -55,8 +55,8 @@
 ;;; different ports for simultaneous testing
 (defparameter *start-port* (or #+sbcl      10000
                                #+ccl       11000
-                               #+allegro   12000
-                               #+lispworks 13000
+                               #+lispworks 12000
+                               #+allegro   13000
                                #+abcl      14000
                                            15000))
 
@@ -82,7 +82,6 @@
    :cleanup (end-local-servers addresses)))
 
 (defwith with-remote-servers (addresses)
-  ;; decrease interval between pinging
   (unwind-protect/safe
    :prepare (start-remote-servers addresses)
    :main (call-body)
@@ -125,9 +124,9 @@
 (defwith with-thread-count-check (sleep-sec)
   (sleep 0.4)
   (let ((old-thread-count (thread-count)))
-    (call-body)
-    (sleep sleep-sec)
-    (is (eql old-thread-count (thread-count)))))
+    (multiple-value-prog1 (call-body)
+      (sleep sleep-sec)
+      (is (eql old-thread-count (thread-count))))))
 
 (defwith with-local-setup (server-count)
   (with-thread-count-check (0.4)
@@ -167,8 +166,8 @@
            ,*log-level*)))
 
 (defun local-lisp ()
-  (or #+ccl (list (first (ccl::command-line-arguments)) "--eval")
-      #+sbcl (list (first sb-ext:*posix-argv*) "--eval")
+  (or #+sbcl (list (first sb-ext:*posix-argv*) "--eval")
+      #+ccl (list (first (ccl::command-line-arguments)) "--eval")
       #+lispworks (list (first sys:*line-arguments-list*) "-eval")
       #+allegro (list (first (sys:command-line-arguments)) "-e")
       #+ecl (list (si:argv 0) "-eval")
@@ -198,7 +197,6 @@
      (with-local-setup (3)
        ,@body)))
 
-#-lfarm-test.without-remote
 (defmacro remote-test (name &body body)
   `(base-test ,name
      (with-remote-setup (3)
@@ -208,10 +206,6 @@
   `(progn
      (local-test ,(alexandria:symbolicate '#:local- name) ,@body)
      (remote-test ,(alexandria:symbolicate '#:remote- name) ,@body)))
-
-#+lfarm-test.without-remote
-(defmacro remote-test (name &body body)
-  (declare (ignore name body)))
 
 (defun execute (&key
                 ((:remote-lisp *remote-lisp*) *remote-lisp*)
@@ -256,7 +250,7 @@ have exited gracefully."
   (submit-task *channel* #'+ 7 8)
   (is (= 15 (receive-result *channel*)))
   (submit-task *channel* 'floor 7 3)
-  (is (equal 2 (receive-result *channel*)))
+  (is (= 2 (receive-result *channel*)))
   (submit-task *channel* (lambda () (values)))
   (is (equal nil (receive-result *channel*)))
   (let ((fn '+))
@@ -314,23 +308,14 @@ have exited gracefully."
 
 (defvar *somevar* nil)
 
-(deftask* bad-compile ()
-  (let 1))
-
 (deftask hello (&key world)
   world)
 
 (full-test task-error-test
-  (submit-task *channel* (lambda 1))
-  (signals task-execution-error
-    (receive-result *channel*))
   (submit-task *channel* #'hello :z 9)
   (signals task-execution-error
     (receive-result *channel*))
   (submit-task *channel* 'blah 3 4)
-  (signals task-execution-error
-    (receive-result *channel*))
-  (submit-task *channel* #'bad-compile)
   (signals task-execution-error
     (receive-result *channel*))
   (submit-task *channel* (lambda () (+ 3 *somevar*)))
@@ -371,7 +356,6 @@ have exited gracefully."
           (serialize '(1111 + 3 4) stream)
           (is (= 7 (deserialize stream))))))))
 
-#-lfarm-test.without-remote
 (base-test raw-remote-test
   (let* ((host *remote-host*)
          (port (next-port)))
@@ -387,14 +371,6 @@ have exited gracefully."
   (submit-task *channel* (lambda () (and (find-package :foo) 3)))
   (is (not (find-package :foo)))
   (is (eql 3 (receive-result *channel*))))
-
-(defclass undreadable () ())
-
-#+lfarm.with-text-serializer
-(local-test unreadable-test
-  (submit-task *channel* (lambda () (make-instance 'unreadable)))
-  (signals task-execution-error
-    (receive-result *channel*)))
 
 #-abcl
 (base-test reconnect-test
@@ -417,7 +393,6 @@ have exited gracefully."
     (with-server (host port)
       (is (truep (ping host port))))))
 
-#-lfarm-test.without-remote
 (base-test remote-ping-test
   (let ((host *remote-host*)
         (port (next-port)))
@@ -462,13 +437,12 @@ have exited gracefully."
         (is (= (length addresses) (kernel-worker-count)))
         (let ((channel (make-channel))
               (data (make-array 100 :initial-element 9)))
-          (progn
-            (submit-task channel
-                         (lambda (data)
-                           (map 'vector (lambda (x) (* x x)) data))
-                         data)
-            (is (equalp (map 'vector (lambda (x) (* x x)) data)
-                        (receive-result channel)))))))))
+          (submit-task channel
+                       (lambda (data)
+                         (map 'vector (lambda (x) (* x x)) data))
+                       data)
+          (is (equalp (map 'vector (lambda (x) (* x x)) data)
+                      (receive-result channel))))))))
 
 (full-test circular-test
   (let ((list (list 1 2 3)))
