@@ -1,8 +1,8 @@
 
 # lfarm
 
-lfarm is a Common Lisp library for distributing work across machines.
-It implements the [lparallel] (http://lparallel.org) kernel API.
+lfarm is a Common Lisp library for distributing work across machines
+using the [lparallel] (http://lparallel.org) API.
 
 ### Download
 
@@ -134,6 +134,12 @@ API](http://lparallel.org/api/kernel) with the following differences.
 * the addition of `broadcast-task` which similarly wraps `broadcast-task*`
 * `task-execution-error` is signaled when a task fails on a remote
 server, instead of the actual error (which may not have local meaning)
+
+[Promises](http://lparallel.org/api/promises/) and a limited number of
+[cognates](http://lparallel.org/api/cognates/) are also available,
+found in the packages `lfarm-client.promise` and
+`lfarm-client.cognate` respectively and also exported by
+`lfarm-client`.
 
 The systems `lfarm-server` and `lfarm-admin` provide the following functions.
 
