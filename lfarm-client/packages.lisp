@@ -96,7 +96,10 @@
         #:lfarm-common
         #:lfarm-client.kernel
         #:lfarm-client.promise)
-  (:export #:plet))
+  (:export #:plet
+           #:pmap
+           #:pmapcar
+           #:pmap-into))
 
 ;;; Avoid polluting CL-USER by choosing names in CL.
 (macrolet
