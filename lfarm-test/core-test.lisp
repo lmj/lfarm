@@ -203,9 +203,14 @@
        ,@body)))
 
 (defmacro full-test (name &body body)
-  `(progn
-     (local-test ,(alexandria:symbolicate '#:local- name) ,@body)
-     (remote-test ,(alexandria:symbolicate '#:remote- name) ,@body)))
+  (let ((local (alexandria:symbolicate name '#:/local))
+        (remote (alexandria:symbolicate name '#:/remote)))
+    `(progn
+       (local-test ,local ,@body)
+       (remote-test ,remote ,@body)
+       (defun ,name ()
+         (,local)
+         (,remote)))))
 
 (defun execute (&key
                 ((:remote-lisp *remote-lisp*) *remote-lisp*)
