@@ -28,37 +28,40 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#+(or sbcl ccl allegro lispworks)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (pushnew :lfarm.with-closures *features*))
+(in-package #:lfarm-client.cognate)
 
-(defsystem :lfarm-client
-  :description
-  "Client component of lfarm, a library for distributing work across machines."
-  :long-description "See http://github.com/lmj/lfarm"
-  :version "0.1.0"
-  :licence "BSD"
-  :author "James M. Lawrence <llmjjmll@gmail.com>"
-  :depends-on (:usocket
-               :lparallel
-               :lfarm-common
-               #+lfarm.with-hu-walker
-               :hu.dwim.walker)
-  :serial t
-  :components ((:module "lfarm-client"
-                :serial t
-                :components ((:file "packages")
-                             (:file "lambda")
-#+lfarm.with-closures        (:file "closure")
-                             (:file "kernel")
-                             (:file "promise")
-                             (:file "cognate")))))
+;;;; plet
 
-(defmethod perform ((o test-op) (c (eql (find-system :lfarm-client))))
-  (declare (ignore o c))
-  (load-system '#:lfarm-test)
-  (test-system '#:lfarm-test))
+(defun pairp (form)
+  (and (consp form) (eql (length form) 2)))
 
-(defmethod perform :after ((o load-op) (c (eql (find-system :lfarm-client))))
-  (declare (ignore o c))
-  (pushnew :lfarm-client *features*))
+(defun parse-bindings (bindings)
+  (let* ((pairs     (remove-if-not #'pairp bindings))
+         (non-pairs (remove-if     #'pairp bindings))
+         (syms      (loop
+                       :for (name nil) :in pairs
+                       :collect (gensym (symbol-name name)))))
+    (values pairs non-pairs syms)))
+
+(defmacro plet (bindings &body body)
+  "The syntax of `plet' matches that of `let'.
+
+  plet ({var-no-init | (var [init-form])}*) form*
+
+For each (var init-form) pair, a future is created which executes
+`init-form'. Inside `body', `var' is a symbol macro which expands to a
+`force' form for the corresponding future.
+
+Each `var-no-init' is bound to nil and each `var' without `init-form'
+is bound to nil (no future is created)."
+  (multiple-value-bind (pairs non-pairs syms) (parse-bindings bindings)
+    `(symbol-macrolet ,(loop
+                          :for sym :in syms
+                          :for (name nil) :in pairs
+                          :collect `(,name (force ,sym)))
+       (let (,@(loop
+                  :for sym :in syms
+                  :for (nil form) :in pairs
+                  :collect `(,sym (future ,form)))
+             ,@non-pairs)
+         ,@body))))

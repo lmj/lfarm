@@ -89,6 +89,15 @@
            #:fulfilledp
            #:chain))
 
+(defpackage #:lfarm-client.cognate
+  (:documentation
+   "Promises and futures.")
+  (:use #:cl
+        #:lfarm-common
+        #:lfarm-client.kernel
+        #:lfarm-client.promise)
+  (:export #:plet))
+
 ;;; Avoid polluting CL-USER by choosing names in CL.
 (macrolet
     ((package (package-name package-nicknames documentation &rest list)
@@ -105,6 +114,8 @@
   (package #:lfarm-client (#:lfarm)
 "This is a convenience package which exports the external symbols of:
    lfarm-client.kernel
-   lfarm-client.promise"
+   lfarm-client.promise
+   lfarm-client.cognate"
     #:lfarm-client.kernel
-    #:lfarm-client.promise))
+    #:lfarm-client.promise
+    #:lfarm-client.cognate))
