@@ -11,7 +11,7 @@ Assuming that you have [Quicklisp](http://www.quicklisp.org/beta/) installed,
     $ cd ~/quicklisp/local-projects
     $ git clone git://github.com/lmj/lfarm.git
 
-lfarm is known to run on ABCL, Allegro, Clozure, LispWorks, and SBCL.
+lfarm is known to run on Allegro, Clozure, LispWorks, and SBCL.
 
 ### Kernel
 
