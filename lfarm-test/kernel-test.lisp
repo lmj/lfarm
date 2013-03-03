@@ -102,9 +102,9 @@
 
 (defwith with-connection ((:vars connection) host port)
   (unwind-protect/safe-bind
-   :bind (connection (lfarm-client::make-connection host port))
+   :bind (connection (lfarm-client.kernel::make-connection host port))
    :main (call-body connection)
-   :cleanup (lfarm-client::end-connection connection)))
+   :cleanup (lfarm-client.kernel::end-connection connection)))
 
 (defun thread-count ()
   ;; ccl can spontaneously lose the initial thread
@@ -384,11 +384,11 @@ have exited gracefully."
     (with-server (host port)
       (with-kernel (*kernel* `((,host ,port)))
         (let ((channel (make-channel)))
-          (lparallel:submit-task (lfarm-client::internal-channel channel)
-                                 (lambda () lfarm-client::*connection*))
+          (lparallel:submit-task (lfarm-client.kernel::internal-channel channel)
+                                 (lambda () lfarm-client.kernel::*connection*))
           (let ((connection (lparallel:receive-result
-                             (lfarm-client::internal-channel channel))))
-            (lfarm-client::end-connection connection)
+                             (lfarm-client.kernel::internal-channel channel))))
+            (lfarm-client.kernel::end-connection connection)
             (submit-task channel #'+ 3 4)
             (is (= 7 (receive-result channel)))))))))
 

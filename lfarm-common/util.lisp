@@ -39,6 +39,13 @@
      (setf (macro-function ',alias) (macro-function ',orig))
      ',alias))
 
+(defmacro alias-function (alias orig)
+  `(progn
+     (setf (symbol-function ',alias) #',orig)
+     (define-compiler-macro ,alias (&rest args)
+       `(,',orig ,@args))
+     ',alias))
+
 (alias-macro with-gensyms alexandria:with-gensyms)
 (alias-macro when-let alexandria:when-let)
 (alias-macro when-let* alexandria:when-let*)

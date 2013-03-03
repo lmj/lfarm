@@ -45,6 +45,8 @@
            #:unwind-protect/safe-bind
            #:named-lambda
            #:lambda-list-parameters
+           #:alias-macro
+           #:alias-function
            #:unsplice
            #:import-now)
   ;; log

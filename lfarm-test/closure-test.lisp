@@ -31,7 +31,7 @@
 (in-package #:lfarm-test)
 
 (defmacro closure-form (lambda-list &body body &environment env)
-  (lfarm-client::maybe-make-closure-form nil lambda-list body env))
+  (lfarm-client.kernel::maybe-make-closure-form nil lambda-list body env))
 
 (defun closure-a (x)
   (let ((y (1+ x)))

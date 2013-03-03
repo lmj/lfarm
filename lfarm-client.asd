@@ -47,10 +47,11 @@
   :serial t
   :components ((:module "lfarm-client"
                 :serial t
-                :components ((:file "package")
+                :components ((:file "packages")
                              (:file "lambda")
 #+lfarm.with-closures        (:file "closure")
-                             (:file "core")))))
+                             (:file "kernel")
+                             (:file "promise")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lfarm-client))))
   (declare (ignore o c))

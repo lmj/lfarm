@@ -35,7 +35,7 @@
 ;;; variables and symbol macros captured. `flet' functions are
 ;;; ignored.
 
-(in-package #:lfarm-client)
+(in-package #:lfarm-client.kernel)
 
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)

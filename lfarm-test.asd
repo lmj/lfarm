@@ -47,8 +47,9 @@
   :components ((:module "lfarm-test"
                 :serial t
                 :components ((:file "1am")
-                             (:file "core-test")
-#+lfarm.with-closures        (:file "closure-test")))))
+                             (:file "kernel-test")
+#+lfarm.with-closures        (:file "closure-test")
+                             (:file "promise-test")))))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lfarm-test))))
   (declare (ignore o c))

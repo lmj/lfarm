@@ -28,7 +28,7 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-client)
+(in-package #:lfarm-client.kernel)
 
 (import-now alexandria:simple-style-warning
             bordeaux-threads:make-lock

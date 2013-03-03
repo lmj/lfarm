@@ -28,11 +28,10 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lfarm-client
+(defpackage #:lfarm-client.kernel
   (:documentation
    "Encompasses the scheduling and execution of remote tasks by
     connecting to a set of servers.")
-  (:nicknames #:lfarm)
   (:use #:cl
         #:lfarm-common)
   (:export #:make-kernel
@@ -74,3 +73,38 @@
            #:task-handler-bind
            #:transfer-error
            #:invoke-transfer-error))
+
+(defpackage #:lfarm-client.promise
+  (:documentation
+   "Promises and futures.")
+  (:use #:cl
+        #:lfarm-common
+        #:lfarm-client.kernel)
+  (:export #:promise
+           #:future
+           #:speculate
+           #:delay
+           #:force
+           #:fulfill
+           #:fulfilledp
+           #:chain))
+
+;;; Avoid polluting CL-USER by choosing names in CL.
+(macrolet
+    ((package (package-name package-nicknames documentation &rest list)
+       `(defpackage ,package-name
+          (:documentation ,documentation)
+          (:nicknames ,@package-nicknames)
+          (:use #:cl ,@list)
+          (:export
+           ,@(loop
+                :for package :in list
+                :nconc (loop
+                          :for symbol :being :the :external-symbols :in package
+                          :collect (make-symbol (string symbol))))))))
+  (package #:lfarm-client (#:lfarm)
+"This is a convenience package which exports the external symbols of:
+   lfarm-client.kernel
+   lfarm-client.promise"
+    #:lfarm-client.kernel
+    #:lfarm-client.promise))

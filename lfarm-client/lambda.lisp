@@ -28,7 +28,7 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-client)
+(in-package #:lfarm-client.kernel)
 
 (defun named-lambda-form (name lambda-list body)
   (let ((args (make-symbol (string 'args))))
