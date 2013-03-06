@@ -590,7 +590,7 @@ each time with the result bound to `result'."
         (serialize-lambda lambda-list body env))
       form))
 
-(defun convert-task-form (form env)
+(defun maybe-convert-task-form (form env)
   (maybe-quote-lambda
    (maybe-serialize-lambda
     (maybe-strip-sharp-quote form)
@@ -609,9 +609,9 @@ exists on the servers.
 with the result being passed to `submit-task*'. This provides the
 semblance of function syntax when referring to remotely executed
 code."
-  `(submit-task* ,channel ,(convert-task-form task env) ,@args))
+  `(submit-task* ,channel ,(maybe-convert-task-form task env) ,@args))
 
 (defmacro broadcast-task (task &rest args &environment env)
   "Same as `submit-task' except the task is executed on every server.
 A possible use for this might be to load common code onto servers."
-  `(broadcast-task* ,(convert-task-form task env) ,@args))
+  `(broadcast-task* ,(maybe-convert-task-form task env) ,@args))

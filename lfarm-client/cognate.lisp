@@ -31,7 +31,7 @@
 (in-package #:lfarm-client.cognate)
 
 (import-now lfarm-client.kernel::maybe-convert-task
-            lfarm-client.kernel::convert-task-form)
+            lfarm-client.kernel::maybe-convert-task-form)
 
 ;;;; plet
 
@@ -268,7 +268,7 @@ Warning: `size' must be less than or equal to the length of the
 smallest sequence passed. It is unspecified what happens when that
 condition is not met."
   `(pmap/fn ,result-type
-            ,(convert-task-form task env)
+            ,(maybe-convert-task-form task env)
             ,first-sequence
             ,@more-sequences))
 
@@ -282,7 +282,7 @@ are also accepted (see `pmap').
 
 Unlike `mapcar', `pmapcar' also accepts vectors."
   `(pmap/fn 'list
-            ,(convert-task-form task env)
+            ,(maybe-convert-task-form task env)
             ,first-sequence
             ,@more-sequences))
 
@@ -342,5 +342,5 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
   "Parallel version of `map-into'. Keyword arguments `parts' and
 `size' are also accepted (see `pmap')."
   `(pmap-into/fn ,result-sequence
-                 ,(convert-task-form task env)
+                 ,(maybe-convert-task-form task env)
                  ,@sequences))
