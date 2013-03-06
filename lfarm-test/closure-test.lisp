@@ -193,3 +193,14 @@
   (is (= (imperative-closure 3) (receive-result *channel*)))
   (submit-task *channel* #'imperative-closure 3)
   (is (= (imperative-closure 3) (receive-result *channel*))))
+
+(local-test symbol-macrolet-test
+  (symbol-macrolet ((a 3))
+    (submit-task *channel* (lambda () a))
+    (is (= 3 (receive-result *channel*)))
+    (symbol-macrolet ((b a))
+      (submit-task *channel* (lambda () b))
+      (is (= 3 (receive-result *channel*)))
+      (symbol-macrolet ((c b))
+        (submit-task *channel* (lambda () c))
+        (is (= 3 (receive-result *channel*)))))))

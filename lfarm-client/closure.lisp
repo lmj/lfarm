@@ -123,14 +123,22 @@
 (defun sort-symbols (symbols)
   (sort symbols #'string< :key #'symbol-name))
 
-(defun find-free-symbols (lambda-list body env)
+(defun find-free-symbols (lambda-list body env
+                          &optional (known-symbol-macros nil))
   ;; Expand symbol macros only once; any more could lead to an
   ;; unportable result.
-  (let* ((initial-syms (%find-free-symbols lambda-list body))
-         (symbol-macros (find-symbol-macros initial-syms env))
+  ;;
+  ;; We must track `known-symbol-macros' when using the fake walker.
+  (let* ((initial-syms (remove-duplicates
+                        (%find-free-symbols lambda-list body)))
+         (symbol-macros (set-difference (find-symbol-macros initial-syms env)
+                                        known-symbol-macros))
          (more-syms (mapcan (lambda (sym-mac)
-                              (%find-free-symbols
-                               lambda-list (list (macroexpand-1 sym-mac env))))
+                              (find-free-symbols
+                               lambda-list
+                               (list (macroexpand-1 sym-mac env))
+                               env
+                               (append symbol-macros known-symbol-macros)))
                             symbol-macros)))
     ;; The only reason to sort is to make testing easier.
     (sort-symbols (remove-duplicates (append initial-syms more-syms)))))
