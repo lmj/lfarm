@@ -95,7 +95,7 @@
                            (setf ,finishedp t)))
                     (when (not ,finishedp)
                       ,abort))))
-              (main main)
+              (main `(with-interrupts ,main))
               (cleanup `(progn ,cleanup nil))
               (abort nil)
               (t nil)))))
