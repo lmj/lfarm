@@ -69,7 +69,7 @@ is bound to nil (no future is created)."
              ,@non-pairs)
          ,@body))))
 
-;;; pmap
+;;;; subdivide
 
 (defun find-num-parts (size parts-hint)
   (multiple-value-bind (quo rem) (floor size parts-hint)
@@ -138,49 +138,56 @@ is bound to nil (no future is created)."
      ,@body))
 
 (defun subdivide-array (array size parts-hint)
+  ;; Create copies, in contradistinction to lparallel. Otherwise we
+  ;; send unnecessary data over the wire. A serialized displaced
+  ;; vector includes its displaced-to vector.
   (with-parts size parts-hint
     (map-into (make-array (num-parts))
               (lambda ()
                 (next-part)
-                (make-array (part-size)
-                            :displaced-to array
-                            :displaced-index-offset (part-offset)
-                            :element-type (array-element-type array))))))
+                (replace (make-array (part-size)
+                                     :element-type (array-element-type array))
+                         array
+                         :start2 (part-offset))))))
 
 (defun subdivide-list (list size parts-hint)
+  ;; Create copies, in contradistinction to lparallel. Otherwise we
+  ;; send unnecessary data over the wire.
   (with-parts size parts-hint
     (loop
        :with p := list
        :while (next-part)
-       :collect p
-       :do (setf p (nthcdr (part-size) p)))))
+       :collect (loop
+                   :repeat (part-size)
+                   :collect (car p)
+                   :do (setf p (cdr p))))))
 
-(defun subdivide-list/slice (list size parts-hint)
-  (with-parts size parts-hint
-    (loop
-       :with p := list
-       :while (next-part)
-       :collect p :into firsts
-       :collect (prog1 (setf p (nthcdr (1- (part-size)) p))
-                  (setf p (prog1 (cdr p) (setf (cdr p) nil)))) :into lasts
-       :finally (return (values firsts (lambda ()
-                                         ;; stitch it back together
-                                         (loop
-                                            :for last  :in lasts
-                                            :for first :in (cdr firsts)
-                                            :do (setf (cdr last) first)
-                                            :finally (setf (cdr last) p))))))))
-
-(defun make-parts (result size parts-hint &key slicep)
-  (if (listp result)
-      (funcall (if slicep #'subdivide-list/slice #'subdivide-list)
-               result size parts-hint)
-      (subdivide-array result size parts-hint)))
+(defun make-parts (result size parts-hint)
+  (etypecase result
+    (list (subdivide-list result size parts-hint))
+    (vector (subdivide-array result size parts-hint))))
 
 (defun make-input-parts (sequences size parts-hint)
   "Subdivide and interleave sequences for parallel mapping."
   (zip/vector (mapcar (lambda (seq) (make-parts seq size parts-hint))
                       sequences)))
+
+;;;; task util
+
+(defun receive-indexed (channel count)
+  (loop
+     :with result := (make-array count)
+     :repeat count
+     :do (destructuring-bind (index . data) (receive-result channel)
+           (setf (aref result index) data))
+     :finally (return result)))
+
+(defun task->fn-form (task)
+  (etypecase task
+    (symbol `',task)
+    (cons task)))
+
+;;;; pmap
 
 (defwith with-max-fill-pointer (seq)
   (if (and (vectorp seq)
@@ -192,34 +199,34 @@ is bound to nil (no future is created)."
          :cleanup (setf (fill-pointer seq) prev-fill-pointer)))
       (call-body)))
 
-(defun pmap-into/submit (channel input-parts result-type task)
-  ;; TODO: avoid redundant computations with list result
-  (let ((index 0))
-    (map nil
-         (lambda (subseqs)
-           (submit-task channel
-                        (lambda (result-type task subseqs index)
-                          (cons index
-                                (apply #'map
-                                       result-type
-                                       (etypecase task
-                                         (symbol task)
-                                         (cons (compile nil task)))
-                                       subseqs)))
-                        result-type
-                        task
-                        subseqs
-                        index)
-           (incf index))
-         input-parts)))
+(defun mapping-task (subresult-type task)
+  `(lambda (subseqs part-index part-size)
+     (cons part-index (apply #'map-into
+                             (make-sequence ',subresult-type part-size)
+                             ,(task->fn-form task)
+                             subseqs))))
+
+(defun subresult-type (result-seq)
+  (let ((element-type (etypecase result-seq
+                        (list t)
+                        (vector (array-element-type result-seq)))))
+    `(simple-array ,element-type (*))))
+
+(defun pmap-into/submit (channel result-seq task sequences size parts-hint)
+  (let* ((task (maybe-convert-task task))
+         (mapping-task (mapping-task (subresult-type result-seq) task))
+         (input-parts (make-input-parts sequences size parts-hint)))
+    (with-parts size parts-hint
+      (loop
+         :for subseqs :across input-parts
+         :for part-index :from 0
+         :while (next-part)
+         :do (submit-task channel mapping-task subseqs
+                          part-index (part-size))))))
 
 (defun pmap-into/receive (channel result-seq size parts-hint)
   (with-parts size parts-hint
-    (let ((result-parts (make-array (num-parts))))
-      (loop
-         :repeat (num-parts)
-         :do (destructuring-bind (index . result-part) (receive-result channel)
-               (setf (aref result-parts index) result-part)))
+    (let ((result-parts (receive-indexed channel (num-parts))))
       (with-max-fill-pointer (result-seq)
         (loop
            :for index :from 0
@@ -228,11 +235,9 @@ is bound to nil (no future is created)."
                         :start1 (part-offset)
                         :end1 (+ (part-offset) (part-size))))))))
 
-(defun pmap-into/parsed (result-seq result-type task sequences size parts-hint)
-  (let* ((task (maybe-convert-task task))
-         (input-parts (make-input-parts sequences size parts-hint))
-         (channel (make-channel)))
-    (pmap-into/submit channel input-parts result-type task)
+(defun pmap-into/parsed (result-seq task sequences size parts-hint)
+  (let ((channel (make-channel)))
+    (pmap-into/submit channel result-seq task sequences size parts-hint)
     (pmap-into/receive channel result-seq size parts-hint))
   result-seq)
 
@@ -240,7 +245,6 @@ is bound to nil (no future is created)."
   ;; do nothing for (pmap nil ...)
   (when result-type
     (pmap-into/parsed (make-sequence result-type size)
-                      result-type
                       function
                       sequences
                       size
@@ -289,46 +293,35 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
 (defun pmap-into-thunk-form (task)
   (with-gensyms (x)
     (etypecase task
-      (symbol `(lambda (,x)
-                 (declare (ignore ,x))
-                 (funcall ,task)))
       (cons (destructuring-bind (head lambda-list &rest body) task
               (assert (eq head 'lambda))
               `(lambda (,x ,@lambda-list)
                  (declare (ignore ,x))
                  ,@body))))))
 
-(defun pmap-into-result-type (result-seq)
-  (typecase result-seq
-    (list 'list)
-    ;; This is really the type of each result part, not necessarily
-    ;; the type of result-seq.
-    (vector `(simple-array ,(array-element-type result-seq) (*)))))
-
 (defun pmap-into/unparsed (result-seq task seqs)
-  (multiple-value-bind (size parts-hint) (pop-options seqs)
-    (let* ((has-fill-p (and (arrayp result-seq)
-                            (array-has-fill-pointer-p result-seq)))
-           (parts-hint (get-parts-hint parts-hint))
-           (size       (or size
-                           (let ((limit (if has-fill-p
-                                            (array-total-size result-seq)
-                                            (length result-seq))))
-                             (if seqs
-                                 (min limit (find-min-length seqs))
-                                 limit))))
-           (result-type (pmap-into-result-type result-seq)))
-      (prog1 (if seqs
-                 (pmap-into/parsed result-seq result-type task seqs
-                                   size parts-hint)
-                 (pmap-into/parsed result-seq
-                                   result-type
-                                   (pmap-into-thunk-form task)
-                                   (list result-seq)
-                                   size
-                                   parts-hint))
-        (when has-fill-p
-          (setf (fill-pointer result-seq) size))))))
+  (let ((task (maybe-convert-task task)))
+    (multiple-value-bind (size parts-hint) (pop-options seqs)
+      (let* ((has-fill-p (and (arrayp result-seq)
+                              (array-has-fill-pointer-p result-seq)))
+             (parts-hint (get-parts-hint parts-hint))
+             (size       (or size
+                             (let ((limit (if has-fill-p
+                                              (array-total-size result-seq)
+                                              (length result-seq))))
+                               (if seqs
+                                   (min limit (find-min-length seqs))
+                                   limit)))))
+        (prog1 (if seqs
+                   (pmap-into/parsed result-seq task seqs
+                                     size parts-hint)
+                   (pmap-into/parsed result-seq
+                                     (pmap-into-thunk-form task)
+                                     (list result-seq)
+                                     size
+                                     parts-hint))
+          (when has-fill-p
+            (setf (fill-pointer result-seq) size)))))))
 
 (defun pmap-into/fn (result-sequence task &rest sequences)
   (typecase result-sequence

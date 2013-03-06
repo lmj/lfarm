@@ -70,6 +70,17 @@
     (pmap-into a '+ :parts 3 '(5 6 7) '(10 11 12))
     (is (equalp #(15) a))))
 
+(full-test pmap-test
+  (is (equalp (map  'vector (lambda (x) (* x x)) #(3 4 5 6))
+              (pmap 'vector (lambda (x) (* x x)) #(3 4 5 6))))
+  (is (equalp (map  'vector (lambda (x) (* x x)) '(3 4 5 6))
+              (pmap 'vector (lambda (x) (* x x)) '(3 4 5 6))))
+  (let ((type '(simple-array fixnum (*))))
+    (is (equalp (map  type (lambda (x) (* x x)) #(3 4 5 6))
+                (pmap type (lambda (x) (* x x)) #(3 4 5 6))))
+    (is (equalp (map  type (lambda (x) (* x x)) '(3 4 5 6))
+                (pmap type (lambda (x) (* x x)) '(3 4 5 6))))))
+
 (full-test degenerate-pmaps-test
   (is (eq (map  nil #'identity '(0 1 2 3))
           (pmap nil #'identity '(0 1 2 3))))
@@ -116,10 +127,17 @@
                   (is (equal  ( mapcar #'sq a)
                               (pmapcar #'sq :parts parts a)))))))
 
+(deftask seven ()
+  7)
+
 (full-test pmap-into-thunk-test
   (let ((a (make-array 3 :initial-element 1)))
     (is (equalp #(9 9 9)
                 (pmap-into a (lambda () 9))))
+    (is (equalp #(7 7 7)
+                (pmap-into a 'seven)))
+    (is (equalp #(7 7 7)
+                (pmap-into a #'seven)))
     #+lfarm.with-closures
     (let ((c 10))
       (is (equalp #(19 19 19)
