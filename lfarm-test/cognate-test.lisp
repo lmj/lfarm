@@ -218,3 +218,90 @@
                                           (incf i))))))
       (is (equalp (map  'vector #'mul3 a b c)
                   (pmap 'vector #'mul3 a b c))))))
+
+(full-test preduce-partial-test
+  (signals simple-error
+    (preduce-partial #'+ #() :initial-value 0))
+  (signals simple-error
+    (preduce-partial #'+ '() :initial-value 0))
+  (signals simple-error
+    (preduce-partial #'+ '()))
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 1)
+              #(52)))
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2)
+              #(18 34)))
+  (is (equalp (preduce-partial #'+ '(3 4 5 6 7 8 9 10) :parts 2 :from-end t)
+              #(18 34)))
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3 :from-end t)
+              #(7 11 15)))
+  (is (equalp (preduce-partial #'+ #(3 4 5 6 7 8) :parts 3)
+              #(7 11 15))))
+
+(deftask associative/non-commutative (a b)
+  (vector (+ (* (aref a 0) (aref b 0)) (* (aref a 1) (aref b 2)))
+          (+ (* (aref a 0) (aref b 1)) (* (aref a 1) (aref b 3)))
+          (+ (* (aref a 2) (aref b 0)) (* (aref a 3) (aref b 2)))
+          (+ (* (aref a 2) (aref b 1)) (* (aref a 3) (aref b 3)))))
+
+(defmacro collect-n (n &body body)
+  "Execute `body' `n' times, collecting the results into a list."
+  `(loop :repeat ,n :collect (progn ,@body)))
+
+(full-test preduce-test
+  (is (equalp (reduce  (lambda (x y) (+ x y)) #(1 2 3 4 5 6))
+              (preduce (lambda (x y) (+ x y)) #(1 2 3 4 5 6))))
+  #+lfarm.with-closures
+  (let ((z 10))
+    (is (equalp (reduce  (lambda (x y) (+ x y z)) #(1 2 3 4 5 6))
+                (preduce (lambda (x y) (+ x y z)) #(1 2 3 4 5 6)))))
+  (let ((a '(0 1 2 3 4 5 6 7))
+        (b '((9 . 0) (9 . 1) (9 . 2) (9 . 3)))
+        (c (collect-n 20 (random 100)))
+        (d (collect-n 20 (vector (random 10)
+                                 (random 10)
+                                 (random 10)
+                                 (random 10)))))
+    (macrolet
+        ((verify (test &rest args)
+           `(loop :for parts :from 1 :to 10 :do
+               (is (funcall ,test
+                            (reduce ,@args)
+                            (preduce ,@args)))
+               (is (funcall ,test
+                            (reduce ,@args)
+                            (preduce ,@args :from-end t))))))
+      (verify #'= #'+ a)
+      (verify #'= #'+ a :initial-value 0)
+      (verify #'= #'+ b :key #'cdr)
+      (verify #'= #'+ c)
+      (verify #'= #'+ c :initial-value 0)
+      (verify #'= #'+ c :start 5)
+      (verify #'= #'+ c :end 5)
+      (verify #'= #'+ c :start 5 :end 16)
+      (verify #'= #'+ c :start 5 :end 16 :from-end t)
+      (verify #'= #'+ c :start 5 :end 16 :initial-value 0)
+      (verify #'= #'* c :start 5 :end 16 :initial-value 1)
+      (verify #'= #'* c :start 5 :end 16 :initial-value 1 :from-end t)
+
+      (verify #'equalp #'associative/non-commutative d)
+      (verify #'equalp #'associative/non-commutative d :start 5)
+      (verify #'equalp #'associative/non-commutative d :end 5)
+      (verify #'equalp #'associative/non-commutative d :start 5 :end 16)
+      (verify #'equalp
+              #'associative/non-commutative d
+              :start 5
+              :end 16
+              :initial-value (vector 1 0 0 1))
+      (verify #'equalp
+              #'associative/non-commutative d
+              :start 5
+              :end 16
+              :initial-value (vector 1 0 0 1)
+              :from-end t))))
+
+(full-test pmap-reduce-test
+  (let ((c (collect-n 3 (random 100))))
+    (is (equal (preduce #'+ c :key (lambda (x) (* x x)))
+               (pmap-reduce (lambda (x) (* x x)) #'+ c)))
+    (is (equal (+ 9 16 25)
+               (pmap-reduce (lambda (x) (* x x)) #'+ '(3 4 5))))))

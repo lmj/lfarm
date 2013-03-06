@@ -187,6 +187,12 @@ is bound to nil (no future is created)."
     (symbol `',task)
     (cons task)))
 
+(defmacro funcall-task (task &rest args)
+  (with-gensyms (channel)
+    `(let ((,channel (make-channel)))
+       (submit-task ,channel ,task ,@args)
+       (receive-result ,channel))))
+
 ;;;; pmap
 
 (defwith with-max-fill-pointer (seq)
@@ -337,3 +343,183 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
   `(pmap-into/fn ,result-sequence
                  ,(maybe-convert-task-form task env)
                  ,@sequences))
+
+;;;; preduce
+
+(defun reducing-task (task keyword-args)
+  (let ((keyword-args (copy-list keyword-args)))
+    (when-let (key (getf keyword-args :key))
+      (setf (getf keyword-args :key) (task->fn-form key)))
+    `(lambda (sequence start end result-index)
+       (cons result-index
+             (reduce ,(task->fn-form task) sequence
+                     :start start
+                     :end end
+                     ,@keyword-args)))))
+
+(defun preduce-partial/vector (task sequence start size parts
+                               &rest keyword-args)
+  (let ((reducing-task (reducing-task task keyword-args))
+        (channel (make-channel)))
+    (with-parts size parts
+      (loop
+         :for result-index :from 0
+         :while (next-part)
+         :do (submit-task channel
+                          reducing-task
+                          sequence
+                          (+ start (part-offset))
+                          (+ start (part-offset) (part-size))
+                          result-index))
+      (receive-indexed channel (num-parts)))))
+
+(defun preduce-partial/list (task sequence start size parts
+                             &rest keyword-args)
+  (let ((reducing-task (reducing-task task keyword-args))
+        (channel (make-channel)))
+    (with-parts size parts
+      (loop
+         :with subseq := (nthcdr start sequence)
+         :for result-index :from 0
+         :while (next-part)
+         :do (submit-task channel
+                          reducing-task
+                          subseq
+                          0
+                          (part-size)
+                          result-index)
+         :do (setf subseq (nthcdr (part-size) subseq)))
+      (receive-indexed channel (num-parts)))))
+
+(defun %preduce-partial (task sequence start size parts
+                         &rest keyword-args)
+  (etypecase sequence
+    (vector (apply #'preduce-partial/vector
+                   task sequence start size parts keyword-args))
+    (list  (apply #'preduce-partial/list
+                  task sequence start size parts keyword-args))))
+
+(defun reduce/remote (task results)
+  (funcall-task `(lambda (results)
+                   (reduce ,(task->fn-form task) results))
+                results))
+
+(defun preduce/common (task sequence subsize
+                       &key
+                       key
+                       from-end
+                       (start 0)
+                       end
+                       (initial-value nil initial-value-given-p)
+                       parts
+                       recurse
+                       partial)
+  (declare (ignore end))
+  (let ((task (maybe-convert-task task)))
+    (cond ((zerop subsize)
+           (when partial
+             (error "PREDUCE-PARTIAL given zero-length sequence"))
+           (if initial-value-given-p
+               initial-value
+               (funcall-task task)))
+          (t
+           (let* ((parts-hint (get-parts-hint parts))
+                  (results (apply #'%preduce-partial
+                                  task sequence start subsize parts-hint
+                                  :key key
+                                  :from-end from-end
+                                  (when initial-value-given-p
+                                    (list :initial-value initial-value)))))
+             (if partial
+                 results
+                 (let ((new-size (length results)))
+                   (if (and recurse (>= new-size 4))
+                       (apply #'preduce/common
+                              task
+                              results
+                              new-size
+                              :from-end from-end
+                              :parts (min parts-hint (floor new-size 2))
+                              :recurse recurse
+                              (when initial-value-given-p
+                                (list :initial-value initial-value)))
+                       (reduce/remote task results)))))))))
+
+(defun subsize (seq size start end)
+  (let ((result (- (or end size) start)))
+    (when (or (minusp result) (> result size))
+      (error "Bad interval for sequence operation on ~a: start=~a end=~a"
+             seq start end))
+    result))
+
+(defun preduce/fn (task sequence &rest args
+                   &key key from-end (start 0) end initial-value parts recurse)
+  (declare (ignore key from-end initial-value parts recurse))
+  (etypecase sequence
+    ((or vector list)
+     (apply #'preduce/common
+            task
+            sequence
+            (subsize sequence (length sequence) start end)
+            args))))
+
+(defun maybe-convert-key-form (keyword-args env)
+  (let ((keyword-args (copy-list keyword-args)))
+    (when-let (key (getf keyword-args :key))
+      (setf (getf keyword-args :key) (maybe-convert-task-form key env)))
+    keyword-args))
+
+(defmacro preduce (task sequence &rest args
+                   &key key from-end (start 0) end initial-value parts recurse
+                   &environment env)
+  "Parallel version of `reduce'.
+
+`preduce' subdivides the input sequence into `parts' number of parts
+and, in parallel, calls `reduce' on each part. The partial results are
+then reduced again, either by `reduce' (the default) or, if `recurse'
+is non-nil, by `preduce'.
+
+`parts' defaults to (kernel-worker-count).
+
+`key' is thrown out while reducing the partial results. It applies to
+the first pass only.
+
+`start' and `end' have the same meaning as in `reduce'.
+
+`from-end' means \"from the end of each part\".
+
+`initial-value' means \"initial value of each part\"."
+  (declare (ignore key from-end start end initial-value parts recurse))
+  `(preduce/fn ,(maybe-convert-task-form task env)
+               ,sequence
+               ,@(maybe-convert-key-form args env)))
+
+(defun preduce-partial/fn (task sequence &rest args
+                           &key key from-end (start 0) end initial-value parts)
+  (declare (ignore key from-end initial-value parts))
+  (apply #'preduce/common
+         task
+         sequence
+         (subsize sequence (length sequence) start end)
+         :partial t
+         args))
+
+(defmacro preduce-partial (task sequence &rest args
+                           &key key from-end (start 0) end initial-value parts
+                           &environment env)
+  "Like `preduce' but only does a single reducing pass.
+
+The length of `sequence' must not be zero.
+
+Returns the partial results as a vector."
+  (declare (ignore key from-end start end initial-value parts))
+  `(preduce-partial/fn ,(maybe-convert-task-form task env)
+                       ,sequence
+                       ,@(maybe-convert-key-form args env)))
+
+(defmacro pmap-reduce (map-function reduce-function sequence
+                       &rest args
+                       &key start end initial-value parts recurse)
+  "Equivalent to (preduce reduce-function sequence :key map-function ...)."
+  (declare (ignore start end initial-value parts recurse))
+  `(preduce ,reduce-function ,sequence :key ,map-function ,@args))

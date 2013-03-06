@@ -99,7 +99,10 @@
   (:export #:plet
            #:pmap
            #:pmapcar
-           #:pmap-into))
+           #:pmap-into
+           #:preduce
+           #:preduce-partial
+           #:pmap-reduce))
 
 ;;; Avoid polluting CL-USER by choosing names in CL.
 (macrolet
