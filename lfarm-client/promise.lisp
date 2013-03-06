@@ -118,7 +118,7 @@
 (alias-macro delay lparallel:delay)
 
 ;;; Thwart attempts to serialize promises.
-#-lfarm.with-text-serializer
+#-(or lfarm.with-text-serializer clisp)
 (macrolet ((define-store-lock (type)
              `(cl-store:defstore-cl-store (obj ,type stream)
                 (declare (ignore obj stream))
