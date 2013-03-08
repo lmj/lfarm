@@ -88,6 +88,8 @@
     (call-body (socket-stream socket-value))))
 
 (defun socket-close (socket)
+  ;; data transport callback
+  (stream-close *auth* (socket-stream socket))
   (usocket:socket-close (usocket socket)))
 
 (defun wait-for-input (socket &key timeout)

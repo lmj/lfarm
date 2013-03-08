@@ -34,7 +34,8 @@
            #:initialize-client-stream
            #:initialize-server-stream
            #:send-buffer
-           #:receive-buffer))
+           #:receive-buffer
+           #:stream-close))
 
 (defpackage #:lfarm-common
   (:documentation

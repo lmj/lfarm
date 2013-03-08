@@ -53,6 +53,12 @@
   (:documentation
    "Receive a (unsigned-byte 8) vector from a stream."))
 
+(defgeneric stream-close (auth stream)
+  (:documentation
+   "Callback for when the stream is closed."))
+
+;;; defaults
+
 (defmethod initialize-server-stream ((auth t) stream)
   (declare (ignore auth))
   stream)
@@ -60,3 +66,6 @@
 (defmethod initialize-client-stream ((auth t) stream server-name)
   (declare (ignore auth server-name))
   stream)
+
+(defmethod stream-close ((auth t) stream)
+  (declare (ignore auth stream)))

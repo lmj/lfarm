@@ -52,7 +52,7 @@
                              (:file "address")
 #-lfarm.with-text-serializer (:file "binary-serializer")
 #+lfarm.with-text-serializer (:file "text-serializer")
-                             (:file "socket")
                              (:file "data-transport")
                              (:file "default-data-transport")
+                             (:file "socket")
                              (:file "object-transport")))))
