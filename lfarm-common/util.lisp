@@ -70,3 +70,20 @@
                (declare (ignorable ,var))
                ,return))
            nil)))
+
+(defun get-time ()
+  (/ (get-internal-real-time)
+     internal-time-units-per-second))
+
+(defun expiredp (start timeout)
+  (>= (- (get-time) start)
+      timeout))
+
+(defmacro with-timeout ((timeout) &body body)
+  (with-gensyms (timeout-value start)
+    `(let* ((,timeout-value ,timeout)
+            (,start (and ,timeout-value (get-time))))
+       (flet ((timeout-expired-p ()
+                (and ,timeout-value
+                     (expiredp ,start ,timeout-value))))
+         ,@body))))

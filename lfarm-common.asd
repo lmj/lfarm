@@ -43,14 +43,16 @@
   :serial t
   :components ((:module "lfarm-common"
                 :serial t
-                :components ((:file "package")
+                :components ((:file "packages")
                              (:file "error")
                              (:file "util")
                              (:file "unwind-protect")
                              (:file "defwith")
                              (:file "log")
+                             (:file "address")
 #-lfarm.with-text-serializer (:file "binary-serializer")
 #+lfarm.with-text-serializer (:file "text-serializer")
-                             (:file "serialize")
                              (:file "socket")
-                             (:file "address")))))
+                             (:file "data-transport")
+                             (:file "default-data-transport")
+                             (:file "object-transport")))))

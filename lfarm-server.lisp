@@ -41,11 +41,7 @@
             bordeaux-threads:make-lock
             bordeaux-threads:with-lock-held
             bordeaux-threads:current-thread
-            bordeaux-threads:destroy-thread
-            usocket:socket-stream
-            usocket:socket-close
-            usocket:with-connected-socket
-            usocket:connection-aborted-error)
+            bordeaux-threads:destroy-thread)
 
 ;;;; util
 
@@ -55,17 +51,8 @@
       (info "ignoring error" err)
       (values nil err))))
 
-(defun socket-accept** (server)
-  (handler-case (socket-accept* server)
-    (connection-aborted-error ())))
-
 (defun socket-close* (socket)
   (ignore-errors/log (socket-close socket)))
-
-(defwith with-close-on-abort (socket)
-  (unwind-protect/safe
-   :main (call-body)
-   :abort (socket-close* socket)))
 
 ;;; CCL sometimes balks at connection attempts (issue #1050)
 #+ccl
@@ -157,7 +144,7 @@ closure in which those variables are bound to the captured values."
     (call-body)))
 
 (defwith environment-closure ()
-  (dynamic-closure (*tasks* *tasks-lock*)
+  (dynamic-closure (*auth* *tasks* *tasks-lock*)
     (call-body)))
 
 (defun acquire-task-index ()
@@ -220,19 +207,19 @@ closure in which those variables are bound to the captured values."
                    (exec-task task))))
     (info "task result" result stream)
     (handler-bind ((error task-handler))
-      (serialize result stream))))
+      (send-object result stream))))
 
 (defun read-task-buffer (stream clean-return corrupt-handler)
   (handler-bind ((end-of-file clean-return)
                  (corrupted-stream-error corrupt-handler))
-    (read-serialized-buffer stream)))
+    (receive-serialized-buffer stream)))
 
 (defun read-and-process-task (stream clean-return corrupt-handler next-task)
   (let ((buffer (read-task-buffer stream clean-return corrupt-handler)))
     (info "new task" buffer stream)
     (flet ((task-handler (err)
              (info "error during task execution" err stream)
-             (serialize (make-task-error-data err) stream)
+             (send-object (make-task-error-data err) stream)
              (funcall next-task)))
       (process-task stream buffer #'task-handler corrupt-handler))))
 
@@ -246,7 +233,7 @@ closure in which those variables are bound to the captured values."
              (return-from task-loop))
            (corrupt-handler (err)
              (info "corrupted stream" err stream)
-             (ignore-errors/log (serialize :corrupt stream))
+             (ignore-errors/log (send-object +corrupt-stream-flag+ stream))
              (go :next-task))
            (next-task ()
              (go :next-task)))
@@ -259,15 +246,15 @@ closure in which those variables are bound to the captured values."
 (defgeneric respond (message stream))
 
 (defmethod respond ((message (eql :ping)) stream)
-  (serialize :pong stream))
+  (send-object :pong stream))
 
 (defmethod respond ((message (eql :task-loop)) stream)
-  (serialize :in-task-loop stream)
+  (send-object :in-task-loop stream)
   (with-task-index
     (task-loop stream)))
 
 (defmethod respond ((message (eql :kill-tasks)) stream)
-  (kill-tasks (deserialize stream)))
+  (kill-tasks (receive-object stream)))
 
 ;;;; dispatch
 
@@ -283,7 +270,7 @@ closure in which those variables are bound to the captured values."
                :name (format nil "lfarm-server response ~a" message)))
 
 (defun dispatch (socket)
-  (let ((message (deserialize (socket-stream socket))))
+  (let ((message (receive-object (socket-stream socket))))
     (info "message" message socket)
     (case message
       (:end-server (socket-close* socket))
@@ -292,34 +279,42 @@ closure in which those variables are bound to the captured values."
 
 ;;;; start-server
 
+(defwith with-auth-error-handler ()
+  (handler-case (call-body)
+    (lfarm-common.data-transport:auth-error (err)
+      (info "auth error:" (princ-to-string err))
+      nil)))
+
 (defwith with-server ((:vars server) host port)
   (with-errors-logged
     (with-bug-handler
-      (with-connected-socket (server (socket-listen* host port
-                                                     :reuse-address t))
+      (with-connected-socket (server (socket-listen host port))
         (with-task-tracking
           (call-body server))))))
 
 (defun server-loop (server)
-  (loop (when-let (client (socket-accept** server))
-          (with-close-on-abort (client)
-            (case (dispatch client)
-              (:end-server (return)))))))
+  (loop (with-auth-error-handler
+          (unwind-protect/safe-bind
+           :bind (socket (socket-accept server))
+           :main (case (dispatch socket)
+                   (:end-server (return)))
+           :abort (socket-close* socket)))))
 
 (defun %start-server (host port)
-  (info "server starting" host port)
+  (info "server starting" host port *auth*)
   (with-server (server host port)
     (server-loop server))
   (info "server ending" host port))
 
 (defun spawn-server (host port name)
-  (make-thread (lambda () (%start-server host port))
+  (make-thread (dynamic-closure (*auth*) (%start-server host port))
                :name name))
 
 (defun start-server (host port
                      &key
                      background
-                     (name (format nil "lfarm-server ~a:~a" host port)))
+                     (name (format nil "lfarm-server ~a:~a" host port))
+                     ((:auth *auth*) *auth*))
   "Start a server instance listening at host:port.
 
 If `background' is true then spawn the server in a separate thread

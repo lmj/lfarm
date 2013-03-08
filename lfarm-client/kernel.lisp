@@ -33,9 +33,6 @@
 (import-now alexandria:simple-style-warning
             bordeaux-threads:make-lock
             bordeaux-threads:with-lock-held
-            usocket:socket-stream
-            usocket:socket-close
-            usocket:with-connected-socket
             lparallel.queue:make-queue
             lparallel.queue:push-queue
             lparallel.queue:pop-queue)
@@ -161,8 +158,8 @@ priority. Default value is `:default'.")
   (multiple-value-bind (connection stream)
       (socket-connect/retry host port :timeout nil)
     (info "connected" host port connection)
-    (serialize :task-loop stream)
-    (unless (eq :in-task-loop (deserialize stream))
+    (send-object :task-loop stream)
+    (unless (eq :in-task-loop (receive-object stream))
       (error 'corrupted-stream-error :stream stream))
     (info "handshake complete" host port connection)
     connection))
@@ -201,22 +198,33 @@ priority. Default value is `:default'.")
 
 ;;;; kernel
 
+(defwith with-auth-error-handler ()
+  (handler-case (call-body)
+    (lfarm-common.data-transport:auth-error (err)
+      (bad "auth error:" (princ-to-string err)))))
+
+(defwith with-connection ()
+  (let ((*connection* (make-connection *host* *port*)))
+    (info "worker connected" *host* *port*)
+    (unwind-protect/safe
+     :main (call-body)
+     :cleanup (progn
+                (info "worker ending" *host* *port*)
+                (end-connection *connection*)))))
+
 (defun worker-context (worker-loop)
   (with-errors-logged
     (info "new worker")
     (destructuring-bind (*host* *port*) (pop-queue *addresses-queue*)
       (info "worker got address" *host* *port*)
-      (let ((*connection* (make-connection *host* *port*)))
-        (info "worker connected" *host* *port*)
-        (unwind-protect/safe
-         :main (funcall worker-loop)
-         :cleanup (progn
-                    (info "worker ending" *host* *port*)
-                    (end-connection *connection*)))))))
+      (with-auth-error-handler
+        (with-connection
+          (funcall worker-loop))))))
 
 (defun make-bindings (addresses-queue)
   `((*debug-io* . ,*debug-io*)
     (*error-output* . ,*error-output*)
+    (*auth* . ,*auth*)
     (*addresses-queue* . ,addresses-queue)))
 
 (defun creation-error-translator (err)
@@ -227,7 +235,8 @@ priority. Default value is `:default'.")
   (handler-bind ((lparallel:kernel-creation-error #'creation-error-translator))
     (apply #'lparallel:make-kernel args)))
 
-(defun make-kernel (addresses &key (name "lfarm-client"))
+(defun make-kernel (addresses
+                    &key (name "lfarm-client") ((:auth *auth*) *auth*))
   "Connect to a set of existing servers.
 
 `addresses' is a list of (host port) string-integer pairs.
@@ -318,15 +327,14 @@ it may be submitted as a remote task."
 
 (defun submit-task-to-server (task-category-id task &rest args)
   (info "submitting" (cons task args) *connection*)
-  (serialize `(,task-category-id ,task ,@args) (socket-stream *connection*)))
+  (send-object `(,task-category-id ,task ,@args) (socket-stream *connection*)))
 
 (defun receive-result-from-server ()
   (info "receiving" *connection*)
-  (let ((result (deserialize (socket-stream *connection*))))
+  (let ((result (receive-object (socket-stream *connection*))))
     (info "received result" result *connection*)
-    (case result
-      (:corrupt (error 'corrupted-stream-error
-                       :stream (socket-stream *connection*))))
+    (when (eq result +corrupt-stream-flag+)
+      (error 'corrupted-stream-error :stream (socket-stream *connection*)))
     result))
 
 (defun %make-channel (&key fixed-capacity)
@@ -486,9 +494,9 @@ each server."
     (lparallel:task-categories-running)))
 
 (defun send-kill (host port task-category-id)
-  (with-connected-socket (socket (socket-connect* host port))
-    (serialize :kill-tasks (socket-stream socket))
-    (serialize task-category-id (socket-stream socket))))
+  (with-connected-stream (stream (socket-connect host port))
+    (send-object :kill-tasks stream)
+    (send-object task-category-id stream)))
 
 (defun broadcast-kill (addresses task-category-id)
   (with-each-address/handle-error (host port addresses 'kill-jobs)

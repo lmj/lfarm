@@ -38,25 +38,20 @@
 
 (in-package #:lfarm-admin)
 
-(import-now usocket:with-connected-socket
-            usocket:socket-stream
-            usocket:wait-for-input
-            usocket:connection-refused-error)
-
 (defun end-server (host port)
   "End the server at host:port.
 
 This only stops new connections from being made. Connections in
 progress are unaffected."
   (info "end-server" host port)
-  (with-connected-socket (socket (socket-connect* host port))
-    (serialize :end-server (socket-stream socket))))
+  (with-connected-stream (stream (socket-connect host port))
+    (send-object :end-server stream)))
 
 (defun write-ping (stream)
-  (serialize :ping stream))
+  (send-object :ping stream))
 
 (defun read-pong (stream)
-  (case (deserialize stream)
+  (case (receive-object stream)
     (:pong)
     (otherwise (error 'corrupted-stream-error :stream stream))))
 
@@ -66,7 +61,7 @@ progress are unaffected."
   (info "ping sent" host port socket))
 
 (defun receive-pong (socket timeout)
-  (when (wait-for-input socket :timeout timeout :ready-only t)
+  (when (wait-for-input socket :timeout timeout)
     (info "detected pong" socket)
     (read-pong (socket-stream socket))
     (info "received pong" socket)

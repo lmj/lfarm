@@ -28,55 +28,20 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lfarm-common
-  (:documentation
-   "(private) Common components for lfarm.")
-  (:use #:cl)
-  ;; util
-  (:export #:with-gensyms
-           #:when-let
-           #:when-let*
-           #:repeat
-           #:defwith
-           #:call-body
-           #:with-tag
-           #:dosequence
-           #:unwind-protect/safe
-           #:unwind-protect/safe-bind
-           #:named-lambda
-           #:lambda-list-parameters
-           #:alias-macro
-           #:alias-function
-           #:unsplice
-           #:import-now)
-  ;; log
-  (:export #:info
-           #:bad
-           #:with-errors-logged
-           #:*log-level*
-           #:*log-stream*)
-  ;; socket
-  (:export #:socket-connect/retry
-           #:with-timeout
-           #:timeout-expired-p
-           #:socket-listen*
-           #:socket-accept*
-           #:socket-connect*
-           #:*connect-retry-interval*)
-  ;; address
-  (:export #:ensure-addresses
-           #:with-each-address
-           #:with-each-address/handle-error)
-  ;; errors
-  (:export #:make-task-error-data
-           #:task-error-data
-           #:task-error-data-report
-           #:task-error-data-desc
-           #:corrupted-stream-error)
-  ;; serialize
-  (:export #:*element-type*
-           #:serialize-to-buffer
-           #:serialize
-           #:deserialize
-           #:deserialize-buffer
-           #:read-serialized-buffer))
+(in-package #:lfarm-common)
+
+;;; Use the serializer to make a simple protocol.
+
+(defmethod send-buffer ((auth t) buffer stream)
+  (declare (ignore auth))
+  (backend-serialize (length buffer) stream)
+  (write-sequence buffer stream))
+
+(defmethod receive-buffer ((auth t) stream)
+  (declare (ignore auth))
+  (let ((buffer (make-array (backend-deserialize stream)
+                            :element-type *element-type*)))
+    (handler-case (read-sequence buffer stream)
+      (end-of-file ()
+        (error 'corrupted-stream-error :stream stream)))
+    buffer))

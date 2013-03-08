@@ -75,6 +75,13 @@
 
 (defun truep (x) (not (null x)))
 
+(defmacro unwind-protect/safe* (&key prepare main cleanup abort)
+  `(unwind-protect/safe
+    :prepare ,prepare
+    :main ,main
+    :cleanup (lfarm-common::with-interrupts ,cleanup)
+    :abort (lfarm-common::with-interrupts ,abort)))
+
 (defwith with-local-servers (addresses)
   (unwind-protect/safe
    :prepare (start-local-servers addresses)
@@ -87,15 +94,15 @@
    :main (call-body)
    :cleanup (end-remote-servers addresses)))
 
-(defwith with-kernel ((:vars kernel) addresses)
+(defwith with-kernel ((:vars kernel) addresses &rest args)
   (unwind-protect/safe-bind
-   :bind (kernel (make-kernel addresses))
+   :bind (kernel (apply #'make-kernel addresses args))
    :main (call-body kernel)
    :cleanup (let ((*kernel* kernel))
               (end-kernel :wait t))))
 
 (defwith with-server (host port &rest args)
-  (unwind-protect/safe
+  (unwind-protect/safe*
    :prepare (apply #'start-server host port :background t args)
    :main (call-body)
    :cleanup (end-server host port)))
@@ -220,7 +227,8 @@
                 ((:boot-form *boot-form*) *boot-form*)
                 ((:remote-log *remote-log*) *remote-log*)
                 ((:remote-host *remote-host*) *remote-host*)
-                ((:wait-interval *wait-interval*) *wait-interval*))
+                ((:wait-interval *wait-interval*) *wait-interval*)
+                ((:auth *auth*) *auth*))
 "Run the lfarm test suite.
 
 `remote-lisp' -- The command to execute lisp on the remote machine (list
@@ -357,18 +365,18 @@ have exited gracefully."
         (port (next-port)))
     (with-server (host port)
       (with-connection (connection host port)
-        (let ((stream (usocket:socket-stream connection)))
-          (serialize '(1111 + 3 4) stream)
-          (is (= 7 (deserialize stream))))))))
+        (let ((stream (socket-stream connection)))
+          (send-object '(1111 + 3 4) stream)
+          (is (= 7 (receive-object stream))))))))
 
 (base-test raw-remote-test
   (let* ((host *remote-host*)
          (port (next-port)))
     (with-remote-servers (`((,host ,port)))
       (with-connection (connection host port)
-        (let ((stream (usocket:socket-stream connection)))
-          (serialize '(1111 + 3 4) stream)
-          (is (= 7 (deserialize stream))))))))
+        (let ((stream (socket-stream connection)))
+          (send-object '(1111 + 3 4) stream)
+          (is (= 7 (receive-object stream))))))))
 
 (remote-test broadcast-test
   (is (not (find-package :foo)))

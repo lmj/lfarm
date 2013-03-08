@@ -30,43 +30,74 @@
 
 (in-package #:lfarm-common)
 
-(import-now usocket:socket-stream
-            usocket:connection-refused-error
-            usocket:timeout-error
-            usocket:unknown-error)
+(import-now usocket:timeout-error
+            usocket:unknown-error
+            usocket:connection-aborted-error)
+
+(defvar *auth* nil)
 
 (defvar *connect-retry-interval* 0.25)
 
-(macrolet ((define-variant (name orig)
-             `(defun ,name (&rest args)
-                (multiple-value-call #',orig (values-list args)
-                                     :element-type *element-type*))))
-  (define-variant socket-listen* usocket:socket-listen)
-  (define-variant socket-accept* usocket:socket-accept)
-  (define-variant socket-connect* usocket:socket-connect))
+(defconstant +corrupt-stream-flag+ 'corrupt-stream-flag)
 
-(defun get-time ()
-  (/ (get-internal-real-time)
-     internal-time-units-per-second))
+(defclass socket ()
+  ((usocket :reader usocket :initarg :usocket)))
 
-(defun expiredp (start timeout)
-  (>= (- (get-time) start)
-      timeout))
+(defclass streaming-socket (socket)
+  ((stream :reader socket-stream :initarg :stream)))
 
-(defmacro with-timeout ((timeout) &body body)
-  (with-gensyms (timeout-value start)
-    `(let* ((,timeout-value ,timeout)
-            (,start (and ,timeout-value (get-time))))
-       (flet ((timeout-expired-p ()
-                (and ,timeout-value
-                     (expiredp ,start ,timeout-value))))
-         ,@body))))
+(defun make-socket (usocket)
+  (make-instance 'socket :usocket usocket))
+
+(defun make-streaming-socket (init-fn usocket &rest args)
+  (unwind-protect/safe
+   :main (let ((stream (apply init-fn *auth* (usocket:socket-stream usocket)
+                              args)))
+           (make-instance 'streaming-socket :usocket usocket :stream stream))
+   :abort (usocket:socket-close usocket)))
+
+(defun make-streaming-client-socket (usocket server-name)
+  (make-streaming-socket #'initialize-client-stream usocket server-name))
+
+(defun make-streaming-server-socket (usocket)
+  (make-streaming-socket #'initialize-server-stream usocket))
+
+(defun socket-listen (host port)
+  (make-socket (usocket:socket-listen host port
+                                      :reuse-address t
+                                      :element-type *element-type*)))
+
+(defun socket-accept (socket)
+  (loop (when-let ((usocket (handler-case (usocket:socket-accept
+                                           (usocket socket)
+                                           :element-type *element-type*)
+                              (connection-aborted-error ()))))
+          (return (make-streaming-server-socket usocket)))))
+
+(defun socket-connect (host port)
+  (let ((usocket (usocket:socket-connect host port
+                                         :element-type *element-type*)))
+    (make-streaming-client-socket usocket host)))
+
+(defwith with-connected-socket ((:vars socket-var) socket-value)
+  (usocket:with-connected-socket (usocket (usocket socket-value))
+    (call-body socket-value)))
+
+(defwith with-connected-stream ((:vars stream-var) socket-value)
+  (usocket:with-connected-socket (usocket (usocket socket-value))
+    (call-body (socket-stream socket-value))))
+
+(defun socket-close (socket)
+  (usocket:socket-close (usocket socket)))
+
+(defun wait-for-input (socket &key timeout)
+  (usocket:wait-for-input (usocket socket) :timeout timeout :ready-only t))
 
 (defun %socket-connect/retry (host port timeout)
   (info "socket-connect/retry" host port timeout)
   (with-timeout (timeout)
     (with-tag :retry
-      (handler-case (socket-connect* host port)
+      (handler-case (socket-connect host port)
         ((or connection-refused-error timeout-error unknown-error) ()
           (when (timeout-expired-p)
             (info "socket-connect/retry timeout" host port)

@@ -28,31 +28,35 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#+(or sbcl ccl allegro lispworks)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (pushnew :lfarm.with-closures *features*))
+(in-package #:lfarm-common.data-transport)
 
-(defsystem :lfarm-test
-  :description
-  "Test suite of lfarm, a library for distributing work across machines."
-  :long-description "See http://github.com/lmj/lfarm"
-  :version "0.1.0"
-  :licence "BSD"
-  :author "James M. Lawrence <llmjjmll@gmail.com>"
-  :depends-on (:lfarm-server
-               :lfarm-client
-               :lfarm-launcher
-               :lfarm-admin)
-  :serial t
-  :components ((:module "lfarm-test"
-                :serial t
-                :components ((:file "1am")
-                             (:file "kernel-test")
-#+lfarm.with-closures        (:file "closure-test")
-                             (:file "promise-test")
-                             (:file "cognate-test")
-                             (:file "auth-test")))))
+(define-condition auth-error (error)
+  ()
+  (:documentation
+   "Raise this error or a subclass thereof when auth fails."))
 
-(defmethod perform ((o test-op) (c (eql (find-system :lfarm-test))))
-  (declare (ignore o c))
-  (funcall (intern (string '#:execute) :lfarm-test)))
+(defgeneric initialize-server-stream (auth stream)
+  (:documentation
+   "Initialize a server-side stream. Return a new stream or the same
+   stream."))
+
+(defgeneric initialize-client-stream (auth stream server-name)
+  (:documentation
+   "Initialize a client-side stream connected to server named
+   `server-name'. Return a new stream or the same stream."))
+
+(defgeneric send-buffer (auth buffer stream)
+  (:documentation
+   "Send a (unsigned-byte 8) vector over a stream."))
+
+(defgeneric receive-buffer (auth stream)
+  (:documentation
+   "Receive a (unsigned-byte 8) vector from a stream."))
+
+(defmethod initialize-server-stream ((auth t) stream)
+  (declare (ignore auth))
+  stream)
+
+(defmethod initialize-client-stream ((auth t) stream server-name)
+  (declare (ignore auth server-name))
+  stream)

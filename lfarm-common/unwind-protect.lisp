@@ -100,16 +100,20 @@
               (abort nil)
               (t nil)))))
 
-(defmacro unwind-protect/safe-bind (&key bind main cleanup)
+(defmacro unwind-protect/safe-bind (&key bind main cleanup abort)
   "Bind a variable inside `unwind-protect' with interrupt safety."
   (destructuring-bind (var value) bind
-    (with-gensyms (uninitialized)
-      `(let ((,var ',uninitialized))
+    (with-gensyms (uninitialized finishedp)
+      `(let ((,var ',uninitialized)
+             (,finishedp nil))
          (without-interrupts
            (unwind-protect (progn
                              (setf ,var (with-interrupts
                                           ,value))
                              (with-interrupts
-                               ,main))
+                               (multiple-value-prog1 ,main
+                                 (setf ,finishedp t))))
              (when (not (eq ,var ',uninitialized))
-               ,cleanup)))))))
+               (if ,finishedp
+                   ,cleanup
+                   (unwind-protect ,abort ,cleanup)))))))))
