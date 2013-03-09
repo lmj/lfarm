@@ -65,7 +65,6 @@
         result-seq))))
 
 (defun write-with-length (buffer stream &key (length 8))
-  (format cl-user::*out* "writing ~s~%" buffer)
   (let ((length-buffer (make-array length :element-type '(unsigned-byte 8))))
     (loop
        for i from 0 below length
