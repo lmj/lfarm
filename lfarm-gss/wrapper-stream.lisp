@@ -1,7 +1,5 @@
 (in-package #:lfarm-gss)
 
-(declaim (optimize (speed 0) (safety 0) (debug 3)))
-
 (defclass wrapper-stream (trivial-gray-streams:fundamental-binary-input-stream
                           trivial-gray-streams:fundamental-binary-output-stream
                           trivial-gray-streams:trivial-gray-stream-mixin)
