@@ -1,5 +1,10 @@
 (in-package #:lfarm-gss)
 
+(defmethod initialize-instance :after ((stream wrapper-stream) &key &allow-other-keys)
+  (lfarm-common:info (format nil "initialised ~a instance: ~s"
+                             (wrapper-stream-description stream)
+                             (wrapper-stream-context stream))))
+
 (defclass gss-auth ()
   ((allowed-users :type list
                   :initform nil)))
@@ -19,11 +24,14 @@
             (declare (ignore flags-reply))
             (setq need-reply continue-reply)
             (setq context context-result)
-            (write-with-length buffer stream)
             (when need-reply
+              (write-with-length buffer stream)
               (setq reply-buffer (read-with-length stream))))
        while need-reply
-       finally (return (make-instance 'wrapper-stream :delegate stream :context context)))))
+       finally (return (make-instance 'wrapper-stream
+                                      :delegate stream
+                                      :context context
+                                      :description "client")))))
 
 (defmethod lfarm-common.data-transport:initialize-server-stream ((auth gss-auth) stream)
   (loop
@@ -40,7 +48,10 @@
             (when buffer
               (write-with-length buffer stream))))
      while need-reply
-     finally (return (make-instance 'wrapper-stream :delegate stream :context context))))
+     finally (return (make-instance 'wrapper-stream
+                                    :delegate stream
+                                    :context context
+                                    :description "server"))))
 
 (defmethod lfarm-common.data-transport:send-buffer ((auth gss-auth) buffer stream)
   (let ((b (cl-gss:wrap (wrapper-stream-context stream) buffer :conf t)))
