@@ -130,8 +130,8 @@ packet filtering tool such as iptables may be used.
 ### Security with GSSAPI
 
 To enable GSSAPI authentication, the `*AUTH*` global variable must be
-set to an instance of `LFARM-GSS:*GSS-AUTH*`. This variable must be
-set on both the client side and on all servers. This class has two
+set to an instance of `LFARM-GSS:GSS-AUTH`. This variable must be set
+on both the client side and on all servers. This class has two
 possible initialisation arguments:
 
 * `:SERVICE-NAME` - This value is used by the client to indicate which
