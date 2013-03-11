@@ -32,8 +32,9 @@
             (declare (ignore flags-reply))
             (setq need-reply continue-reply)
             (setq context context-result)
+            (when buffer
+              (write-with-length buffer stream))
             (when need-reply
-              (write-with-length buffer stream)
               (setq reply-buffer (read-with-length stream))))
        while need-reply
        finally (return (make-instance 'wrapper-stream
