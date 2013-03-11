@@ -172,7 +172,8 @@ implementation:
 
 Once you have the keytab file, make sure that the environment variable
 `KRB5_KTNAME` is set to the path of keytab file and that it is
-readable by the lfarm server instance.
+readable by the lfarm server instance. Once this has been done, the
+communication should be secured by the Kerberos server.
 
 ## API
 
