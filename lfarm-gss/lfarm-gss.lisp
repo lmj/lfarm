@@ -18,7 +18,7 @@
 (defgeneric name-accepted (auth name))
 
 (defmethod name-accepted ((auth gss-auth) name)
-  (member (cl-gss:name-to-string name) (gss-auth-allowed-users auth)))
+  (member (cl-gss:name-to-string name) (gss-auth-allowed-users auth) :test #'equal))
 
 (defmethod lfarm-common.data-transport:initialize-client-stream ((auth gss-auth) stream server-name)
   (let ((name (cl-gss:make-name (format nil "~a@~a" (gss-auth-service-name auth) server-name))))
