@@ -6,14 +6,22 @@
                              (wrapper-stream-context stream))))
 
 (defclass gss-auth ()
-  ((allowed-users :type list
-                  :initform nil)))
+  ((service-name  :type string
+                  :initform "lfarm"
+                  :initarg :service-name
+                  :reader gss-auth-service-name)
+   (allowed-users :type list
+                  :initform nil
+                  :initarg :allowed-users
+                  :accessor gss-auth-allowed-users)))
 
-(defgeneric name-accepted (auth name)
-  (:method (auth name) t))
+(defgeneric name-accepted (auth name))
+
+(defmethod name-accepted ((auth gss-auth) name)
+  (member (cl-gss:name-to-string name) (gss-auth-allowed-users auth)))
 
 (defmethod lfarm-common.data-transport:initialize-client-stream ((auth gss-auth) stream server-name)
-  (let ((name (cl-gss:make-name (format nil "lfarm@~a" server-name))))
+  (let ((name (cl-gss:make-name (format nil "~a@~a" (gss-auth-service-name auth) server-name))))
     (loop
        with need-reply
        with context = nil
