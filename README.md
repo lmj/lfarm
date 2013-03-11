@@ -162,7 +162,7 @@ implementation:
 * For MIT Kerberos:
   http://web.mit.edu/kerberos/krb5-1.5/krb5-1.5.4/doc/krb5-admin/Adding-Principals-to-Keytabs.html
 
-* For Keimdal:
+* For Heimdal:
   http://www.h5l.org/manual/HEAD/info/heimdal/keytabs.html (don't
   forget to add the `-k` flag to specify the file to which the key
   should be written)
@@ -172,8 +172,9 @@ implementation:
 
 Once you have the keytab file, make sure that the environment variable
 `KRB5_KTNAME` is set to the path of keytab file and that it is
-readable by the lfarm server instance. Once this has been done, the
-communication should be secured by the Kerberos server.
+readable by the lfarm server instance. If not, the server will not be
+able to authenticate itself against the client which will prevent it
+from connecting.
 
 ## API
 
