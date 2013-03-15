@@ -26,7 +26,7 @@
                                    :password (cert-data-password d))))
 
 (defmethod lfarm-common.data-transport:initialize-server-stream ((auth ssl-auth) stream)
-  (let ((d (ssl-auth-client-cert-data auth)))
+  (let ((d (ssl-auth-server-cert-data auth)))
     (cl+ssl:make-ssl-server-stream stream
                                    :certificate (cert-data-path d)
                                    :key (cert-data-key d)
