@@ -13,7 +13,8 @@
    (allowed-users :type list
                   :initform nil
                   :initarg :allowed-users
-                  :accessor gss-auth-allowed-users)))
+                  :accessor gss-auth-allowed-users))
+  (:documentation "GSS support for lfarm"))
 
 (defgeneric name-accepted (auth name))
 
