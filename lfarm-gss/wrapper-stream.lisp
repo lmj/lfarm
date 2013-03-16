@@ -25,12 +25,12 @@
 (defmethod trivial-gray-streams:stream-read-sequence
     ((stream wrapper-stream) seq start end &key)
   (read-sequence seq (wrapper-stream-delegate stream)
-                 :start (or start 0) :end end))
+                 :start start :end end))
 
 (defmethod trivial-gray-streams:stream-write-sequence
     ((stream wrapper-stream) seq start end &key)
   (write-sequence seq (wrapper-stream-delegate stream)
-                  :start (or start 0) :end end))
+                  :start start :end end))
 
 (defmethod trivial-gray-streams:stream-finish-output
     ((stream wrapper-stream))
