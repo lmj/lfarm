@@ -1,8 +1,8 @@
 (in-package #:lfarm-gss)
 
-(defclass wrapper-stream (trivial-gray-streams:fundamental-binary-input-stream
-                          trivial-gray-streams:fundamental-binary-output-stream
-                          trivial-gray-streams:trivial-gray-stream-mixin)
+(defclass wrapper-stream (trivial-gray-streams:trivial-gray-stream-mixin
+                          trivial-gray-streams:fundamental-binary-input-stream
+                          trivial-gray-streams:fundamental-binary-output-stream)
   ((delegate :initarg :delegate
              :initform (error "~s is a required argument for class ~s" :delegate 'wrapper-stream)
              :reader wrapper-stream-delegate)
