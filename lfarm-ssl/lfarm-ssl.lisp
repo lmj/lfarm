@@ -9,25 +9,25 @@
              :reader cert-data-key)
    (password :initarg :password
              :initform nil
-             :reader cert-data-password)))
+             :reader cert-data-password))
+  (:documentation "Certificate information for SSL auth models"))
 
-(defclass ssl-auth ()
-  ((server-cert-data :initarg :server-cert-data
-                     :reader ssl-auth-server-cert-data)
-   (client-cert-data :initarg :client-cert-data
-                     :reader ssl-auth-client-cert-data))
-  (:documentation "SSL-based secutiry for lfarm"))
+(defclass ssl-auth-server (cert-data)
+  ()
+  (:documentation "Server ssl auth model"))
 
-(defmethod lfarm-common.data-transport:initialize-client-stream ((auth ssl-auth) stream server-name)
-  (let ((d (ssl-auth-client-cert-data auth)))
-    (cl+ssl:make-ssl-client-stream stream
-                                   :certificate (cert-data-path d)
-                                   :key (cert-data-key d)
-                                   :password (cert-data-password d))))
+(defclass ssl-auth-client (cert-data)
+  ()
+  (:documentation "Client ssl auth model"))
 
-(defmethod lfarm-common.data-transport:initialize-server-stream ((auth ssl-auth) stream)
-  (let ((d (ssl-auth-server-cert-data auth)))
-    (cl+ssl:make-ssl-server-stream stream
-                                   :certificate (cert-data-path d)
-                                   :key (cert-data-key d)
-                                   :password (cert-data-password d))))
+(defmethod lfarm-common.data-transport:initialize-client-stream ((auth ssl-auth-client) stream server-name)
+  (cl+ssl:make-ssl-client-stream stream
+                                 :certificate (cert-data-path auth)
+                                 :key (cert-data-key auth)
+                                 :password (cert-data-password auth)))
+
+(defmethod lfarm-common.data-transport:initialize-server-stream ((auth ssl-auth-server) stream)
+  (cl+ssl:make-ssl-server-stream stream
+                                 :certificate (cert-data-path auth)
+                                 :key (cert-data-key auth)
+                                 :password (cert-data-password auth)))

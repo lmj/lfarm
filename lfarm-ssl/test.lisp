@@ -7,17 +7,16 @@
   (ql:quickload "lfarm-client")
   (ql:quickload "lfarm-ssl"))
 
-(setq lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth
-                                         :server-cert-data (make-instance 'lfarm-ssl:cert-data
-                                                                          :path "/Users/elias/z/server.crt"
-                                                                          :key "/User/elias/z/server.key"
-                                                                          :password "foofoo"
-                                                                          )
-                                         :client-cert-data (make-instance 'lfarm-ssl:cert-data
-                                                                          ;:path #p"/Users/elias/z/server.crt"
-                                                                          ;:key #p"/User/elias/z/server.key"
-                                                                          ;:password "foofoo"
-                                                                          )))
+(let ((lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth-server
+                                          :path "/Users/elias/z/servercert.pem"
+                                          :key "/User/elias/z/server.key"
+                                          :password "foofoo"
+                                          )))
+  (lfarm-server:start-server "localhost" 7777 :background t))
 
-(lfarm-server:start-server "localhost" 7777 :background t)
-(setq lfarm-client.kernel:*kernel* (lfarm:make-kernel '(("localhost" 7777))))
+(let ((lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth-client
+                                          :path "/Users/elias/z/servercert.pem"
+                                          ;:key "/User/elias/z/client.key"
+                                          ;:password "foofoo"
+                                          )))
+  (setq lfarm-client.kernel:*kernel* (lfarm:make-kernel '(("localhost" 7777)))))

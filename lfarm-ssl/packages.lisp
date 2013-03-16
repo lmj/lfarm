@@ -1,4 +1,4 @@
 (defpackage #:lfarm-ssl
   (:use :cl)
-  (:export #:ssl-auth 
-           #:cert-data))
+  (:export #:ssl-auth-server
+           #:ssl-auth-client))
