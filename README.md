@@ -85,98 +85,7 @@ Allegro. Lexical variables and symbol macrolets are captured, but
 Tasks are not macroexpanded in order to ensure portability across
 clients and servers.
 
-### Serialization
-
-Serialization is done with
-[cl-store](http://common-lisp.net/project/cl-store/). It uses a
-portable serialization format, allowing lfarm clients and servers to
-run on different Lisp implementations.
-
-## Security
-
-If security is not enabled (i.e. if the `*AUTH*` variable is `NIL`),
-no security is enabled and all communication is completely open. When
-this is the case, an lfarm server, whose purpose is to execute
-arbitrary code (!!), should only be accessed through an ssh tunnel or
-(maybe) a secure LAN. If a tunnel is used, the server may run on the
-loopback interface.
-
-lfarm also provides the option to use GSSAPI (Kerberos) for
-security. This provides a very high level of security where both
-clients and servers are properly authenticated but does require a
-Kerberos (or Active Directory) server.
-
-### Security with SSH tunnel
-
-    ;; On the remote machine
-    (ql:quickload :lfarm-server)
-    (lfarm-server:start-server "127.0.0.1" 33333)
-
-To create a tunnel,
-
-    # On the local machine
-    $ ssh -f -L 33333:127.0.0.1:33333 <remote-address> -N
-
-The remote server should now be accessible locally.
-
-    ;; On the local machine
-    (ql:quickload :lfarm-admin)
-    (lfarm-admin:ping "127.0.0.1" 33333) ;=> T
-
-Of course there is still local security to consider, as local users on
-both ends have access to the server. If this is a concern then a
-packet filtering tool such as iptables may be used.
-
-### Security with GSSAPI
-
-To enable GSSAPI authentication, the `*AUTH*` global variable must be
-set to an instance of `LFARM-GSS:GSS-AUTH`. This variable must be set
-on both the client side and on all servers. This class has two
-possible initialisation arguments:
-
-* `:SERVICE-NAME` - This value is used by the client to indicate which
-  service type should be used when requesting a ticket for the remote
-  service. The default is `lfarm`. In other words, if an attempt is
-  done to connect to the server at `server.example.com`, the service
-  principal will be `lfarm/server.example.com`.
-
-* `:ALLOWED-USERS` - A list of all users that are allowed to connect
-  to the server. It is only used by the server. Each element should be
-  a string representing the principal name (including realm) of the
-  user that is allowed to connect. For example: `user@EXAMPLE.COM`.
-
-If a more complex authorisation mechanism is needed which is not
-covered by the simple user list as described above, you can subclass
-the `GSS-AUTH` class and then implement the method
-`LFARM-GSS:NAME-ACCEPTED` on your new class. This generic function
-takes two arguments, the authentication object and the name to be
-verified, and should return non-NIL if the user is allowed to connect.
-Note that the name is an instance of `CL-GSS:NAME`, and you need to
-call the function `CL-GSS:NAME-TO-STRING` on it to extract the actual
-name.
-
-The server needs to have access to the service principal in a keytab
-file. How to create the keytab file depends on your Kerberos server
-implementation:
-
-* For MIT Kerberos:
-  http://web.mit.edu/kerberos/krb5-1.5/krb5-1.5.4/doc/krb5-admin/Adding-Principals-to-Keytabs.html
-
-* For Heimdal:
-  http://www.h5l.org/manual/HEAD/info/heimdal/keytabs.html (don't
-  forget to add the `-k` flag to specify the file to which the key
-  should be written)
-
-* For Active Directory:
-  http://technet.microsoft.com/en-us/library/bb742433.aspx
-
-Once you have the keytab file, make sure that the environment variable
-`KRB5_KTNAME` is set to the path of keytab file and that it is
-readable by the lfarm server instance. If not, the server will not be
-able to authenticate itself against the client which will prevent it
-from connecting.
-
-## API
+### API
 
 The `lfarm-client` system defines the `lfarm-client` package which has
 the nickname `lfarm`. It exports the [lparallel kernel
@@ -214,10 +123,95 @@ seconds. Returns true if successful and nil otherwise.
 This only stops new connections from being made. Connections in
 progress are unaffected.
 
+## Security
+
+The purpose of an lfarm server is to execute arbitrary code, so it is
+highly advised to enable some form of security. lfarm directly
+supports Kerberos (or Active Directory) authentication. Alternatively,
+SSH tunnels may be used.
+
+### Security with SSH tunneling
+
+    ;; On the remote machine
+    (ql:quickload :lfarm-server)
+    (lfarm-server:start-server "127.0.0.1" 33333)
+
+To create a tunnel,
+
+    # On the local machine
+    $ ssh -f -L 33333:127.0.0.1:33333 <remote-address> -N
+
+The remote server should now be accessible locally.
+
+    ;; On the local machine
+    (ql:quickload :lfarm-admin)
+    (lfarm-admin:ping "127.0.0.1" 33333) ;=> T
+
+Of course there is still local security to consider, as local users on
+both ends have access to the server. If this is a concern then a
+packet filtering tool such as iptables may be used.
+
+### Security with Kerberos/GSSAPI
+
+The `lfarm-gss` system provides support for GSSAPI authentication. The
+`:auth` argument to `lfarm-server:start-server` and
+`lfarm-client:make-kernel` accepts an instance of
+`lfarm-gss:gss-auth`. This class has two possible initialization
+arguments:
+
+* `:service-name` - This value is used by the client to indicate which
+  service type should be used when requesting a ticket for the remote
+  service. The default is `lfarm`. In other words, if an attempt is
+  done to connect to the server at `server.example.com`, the service
+  principal will be `lfarm/server.example.com`.
+
+* `:allowed-users` - A list of all users that are allowed to connect
+  to the server. It is only used by the server. Each element should be
+  a string representing the principal name (including realm) of the
+  user that is allowed to connect. For example: `user@EXAMPLE.COM`.
+
+If a more complex authorization mechanism is needed which is not
+covered by the simple user list as described above, you can subclass
+the `gss-auth` class and then implement the method
+`lfarm-gss:name-accepted` on your new class. This generic function
+takes two arguments, the authentication object and the name to be
+verified, and should return non-NIL if the user is allowed to connect.
+Note that the name is an instance of `cl-gss:name`, and you need to
+call the function `cl-gss:name-to-string` on it to extract the actual
+name.
+
+The server needs to have access to the service principal in a keytab
+file. How to create the keytab file depends on your Kerberos server
+implementation:
+
+* For MIT Kerberos:
+  http://web.mit.edu/kerberos/krb5-1.5/krb5-1.5.4/doc/krb5-admin/Adding-Principals-to-Keytabs.html
+
+* For Heimdal:
+  http://www.h5l.org/manual/HEAD/info/heimdal/keytabs.html (don't
+  forget to add the `-k` flag to specify the file to which the key
+  should be written)
+
+* For Active Directory:
+  http://technet.microsoft.com/en-us/library/bb742433.aspx
+
+Once you have the keytab file, make sure that the environment variable
+`KRB5_KTNAME` is set to the path of keytab file and that it is
+readable by the lfarm server instance. If not, the server will not be
+able to authenticate itself against the client which will prevent it
+from connecting.
+
 ## Details
 
 That covers perhaps all you need to know about lfarm. Those who are
 curious may read on (or not).
+
+### Serialization
+
+Serialization is done with
+[cl-store](http://common-lisp.net/project/cl-store/). It uses a
+portable serialization format, allowing lfarm clients and servers to
+run on different Lisp implementations.
 
 ### Packages
 
@@ -290,3 +284,5 @@ local.
 ### Author
 
 James M. Lawrence <llmjjmll@gmail.com>
+
+Kerberos support by Elias Martenson <lokedhs@gmail.com>
