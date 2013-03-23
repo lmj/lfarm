@@ -8,15 +8,15 @@
   (ql:quickload "lfarm-ssl"))
 
 (let ((lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth-server
-                                          :path "/Users/elias/z/servercert.pem"
-                                          :key "/User/elias/z/server.key"
-                                          :password "foofoo"
+                                          :path "/Users/elias/z/server_cert.pem"
+                                          :key "/Users/elias/z/server.pem"
+                                          ;:password "foofoo"
                                           )))
   (lfarm-server:start-server "localhost" 7777 :background t))
 
 (let ((lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth-client
-                                          :path "/Users/elias/z/servercert.pem"
-                                          ;:key "/User/elias/z/client.key"
+                                          :path "/Users/elias/z/server_cert.pem"
+                                          :key "/Users/elias/z/server.pem"
                                           ;:password "foofoo"
                                           )))
   (setq lfarm-client.kernel:*kernel* (lfarm:make-kernel '(("localhost" 7777)))))
