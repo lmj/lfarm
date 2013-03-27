@@ -1,4 +1,3 @@
-
 # lfarm
 
 lfarm is a Common Lisp library for distributing work across machines
@@ -196,7 +195,7 @@ implementation:
   http://technet.microsoft.com/en-us/library/bb742433.aspx
 
 Once you have the keytab file, make sure that the environment variable
-`KRB5_KTNAME` is set to the path of keytab file and that it is
+`KRB5_KTNAME` is set to the path of the keytab file and that it is
 readable by the lfarm server instance. If not, the server will not be
 able to authenticate itself against the client which will prevent it
 from connecting.
