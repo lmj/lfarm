@@ -1,4 +1,5 @@
 (defpackage #:lfarm-gss
   (:use #:cl)
-  (:export #:gss-auth
+  (:export #:gss-auth-client
+           #:gss-auth-server
            #:wrapper-stream))

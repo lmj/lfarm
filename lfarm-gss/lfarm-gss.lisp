@@ -5,23 +5,27 @@
                              (wrapper-stream-description stream)
                              (wrapper-stream-context stream))))
 
-(defclass gss-auth ()
+(defclass gss-auth-mixin ()
+  ())
+
+(defclass gss-auth-client (gss-auth-mixin)
   ((service-name  :type string
                   :initform "lfarm"
                   :initarg :service-name
-                  :reader gss-auth-service-name)
-   (allowed-users :type list
+                  :reader gss-auth-service-name)))
+
+(defclass gss-auth-server (gss-auth-mixin)
+  ((allowed-users :type list
                   :initform nil
                   :initarg :allowed-users
-                  :accessor gss-auth-allowed-users))
-  (:documentation "GSS support for lfarm"))
+                  :accessor gss-auth-allowed-users)))
 
 (defgeneric name-accepted (auth name))
 
-(defmethod name-accepted ((auth gss-auth) name)
+(defmethod name-accepted ((auth gss-auth-server) name)
   (member (cl-gss:name-to-string name) (gss-auth-allowed-users auth) :test #'equal))
 
-(defmethod lfarm-common.data-transport:initialize-client-stream ((auth gss-auth) stream server-name)
+(defmethod lfarm-common.data-transport:initialize-client-stream ((auth gss-auth-client) stream server-name)
   (let ((name (cl-gss:make-name (format nil "~a@~a" (gss-auth-service-name auth) server-name))))
     (loop
        with need-reply
@@ -43,7 +47,7 @@
                                       :context context
                                       :description "client")))))
 
-(defmethod lfarm-common.data-transport:initialize-server-stream ((auth gss-auth) stream)
+(defmethod lfarm-common.data-transport:initialize-server-stream ((auth gss-auth-server) stream)
   (loop
      with need-reply
      with context = nil
@@ -63,11 +67,11 @@
                                     :context context
                                     :description "server"))))
 
-(defmethod lfarm-common.data-transport:send-buffer ((auth gss-auth) buffer stream)
+(defmethod lfarm-common.data-transport:send-buffer ((auth gss-auth-mixin) buffer stream)
   (let ((b (cl-gss:wrap (wrapper-stream-context stream) buffer :conf t)))
     (write-with-length b stream)))
 
-(defmethod lfarm-common.data-transport:receive-buffer ((auth gss-auth) stream)
+(defmethod lfarm-common.data-transport:receive-buffer ((auth gss-auth-mixin) stream)
   (let ((buffer (read-with-length stream)))
     (cl-gss:unwrap (wrapper-stream-context stream) buffer)))
 

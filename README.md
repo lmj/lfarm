@@ -155,23 +155,26 @@ packet filtering tool such as iptables may be used.
 The `lfarm-gss` system provides support for GSSAPI authentication. The
 `:auth` argument to `lfarm-server:start-server` and
 `lfarm-client:make-kernel` accepts an instance of
-`lfarm-gss:gss-auth`. This class has two possible initialization
-arguments:
+`lfarm-gss:gss-auth-server` and `lfarm-gss:gss-auth-client`
+respectively.
 
-* `:service-name` - This value is used by the client to indicate which
-  service type should be used when requesting a ticket for the remote
-  service. The default is `lfarm`. In other words, if an attempt is
-  done to connect to the server at `server.example.com`, the service
-  principal will be `lfarm/server.example.com`.
+When creating a server, the class `lfarm-gss:gss-auth-server` accepts
+the initialization keyword `:service-name`. This value is indicats
+which service type should be used when requesting a ticket for the
+remote service. The default is `lfarm`. In other words, if an attempt
+is done to connect to the server at `server.example.com`, the service
+principal will be `lfarm/server.example.com`.
 
-* `:allowed-users` - A list of all users that are allowed to connect
-  to the server. It is only used by the server. Each element should be
-  a string representing the principal name (including realm) of the
-  user that is allowed to connect. For example: `user@EXAMPLE.COM`.
+When creating a kernel (client), the class `lfarm-gss:gss-auth-client`
+accepts the initialization keyword `:allowed-users` which specifies a
+list of all users that are allowed to connect to the server. Each
+element should be a string representing the principal name (including
+realm) of the user that is allowed to connect. For example:
+`user@EXAMPLE.COM`.
 
 If a more complex authorization mechanism is needed which is not
 covered by the simple user list as described above, you can subclass
-the `gss-auth` class and then implement the method
+the `gss-auth-server` class and then implement the method
 `lfarm-gss:name-accepted` on your new class. This generic function
 takes two arguments, the authentication object and the name to be
 verified, and should return non-NIL if the user is allowed to connect.

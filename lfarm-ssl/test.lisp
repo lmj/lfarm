@@ -16,7 +16,7 @@
 
 (let ((lfarm-common:*auth* (make-instance 'lfarm-ssl:ssl-auth-client
                                           :path "/Users/elias/z/server_cert.pem"
-                                          :key "/Users/elias/z/server.pem"
+                                          :key "/Users/elias/z/client.pem"
                                           ;:password "foofoo"
                                           )))
   (setq lfarm-client.kernel:*kernel* (lfarm:make-kernel '(("localhost" 7777)))))
