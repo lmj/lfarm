@@ -379,10 +379,10 @@ have exited gracefully."
           (is (= 7 (receive-object stream))))))))
 
 (remote-test broadcast-test
-  (is (not (find-package :foo)))
-  (broadcast-task (lambda () (defpackage :foo) nil))
-  (submit-task *channel* (lambda () (and (find-package :foo) 3)))
-  (is (not (find-package :foo)))
+  (is (not (find-package :lfarm-test.foo)))
+  (broadcast-task (lambda () (defpackage :lfarm-test.foo) nil))
+  (submit-task *channel* (lambda () (and (find-package :lfarm-test.foo) 3)))
+  (is (not (find-package :lfarm-test.foo)))
   (is (eql 3 (receive-result *channel*))))
 
 #-abcl
