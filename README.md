@@ -20,10 +20,24 @@ in lfarm it is implemented with a set of servers that execute tasks.
                                               ("127.0.0.1" 22222))))
 
     ;; Use the lparallel API.
+
     (let ((channel (lfarm:make-channel)))
       (lfarm:submit-task channel #'+ 3 4)
       (lfarm:receive-result channel))
     ;; => 7
+
+    (let ((f (lfarm:future (+ 3 4))))
+      (lfarm:force f))
+    ;; => 7
+
+    (lfarm:plet ((x (+ 3 4))
+                 (y (+ 5 6)))
+      (+ x y))
+    ;; => 18
+
+    (lfarm:pmapcar '1+ #(1 2 3))         ; => (2 3 4)
+    (lfarm:preduce '+ #(1 2 3))          ; => 6
+    (lfarm:pmap-reduce '1+ '+ #(1 2 3))  ; => 9
 
 Although the servers in this example are local, lfarm servers may run
 in separate Lisp instances on remote machines.
