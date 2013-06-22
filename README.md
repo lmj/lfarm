@@ -55,9 +55,6 @@ is not required to do so.)
 `submit-task` notices that `add` was defined with `deftask` and
 converts it to a named lambda before submitting it to a server.
 
-`deftask*` is a variant of `deftask` which records the function body
-without defining the function.
-
 To define `add` remotely use `broadcast-task`, which executes a given
 task on all servers.
 
@@ -82,7 +79,7 @@ the nickname `lfarm`. It exports the [lparallel kernel
 API](http://lparallel.org/api/kernel) with the following differences.
 
 * tasks have the aforementioned restrictions placed upon them
-* the addition of `deftask` and its non-locally-defining cousin `deftask*`
+* the addition of `deftask`
 * `make-kernel` expects addresses, and lacks the `:context` and
   `:bindings` arguments
 * `task-handler-bind` does not exist
