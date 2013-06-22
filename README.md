@@ -87,7 +87,7 @@ API](http://lparallel.org/api/kernel) with the following differences.
   `:bindings` arguments
 * `task-handler-bind` does not exist
 * `*debug-tasks-p*` and `*kernel-spin-count*` exist but have no effect
-* `submit-task` is a macro that wraps `submit-task*` (explained below)
+* `submit-task` is a macro that wraps `submit-task*` (see the Details section)
 * the addition of `broadcast-task` which similarly wraps `broadcast-task*`
 * `task-execution-error` is signaled when a task fails on a remote
 server, instead of the actual error (which may not have local meaning)
