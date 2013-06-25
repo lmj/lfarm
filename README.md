@@ -3,7 +3,7 @@
 lfarm is a Common Lisp library for distributing work across machines
 using the [lparallel] (http://lparallel.org) API.
 
-### Kernel
+### Synopsis
 
 In lparallel a _kernel_ was defined as abstract entity that schedules
 and executes tasks. lparallel implements it with a thread pool, while
@@ -20,24 +20,26 @@ in lfarm it is implemented with a set of servers that execute tasks.
                                               ("127.0.0.1" 22222))))
 
     ;; Use the lparallel API.
+    (defpackage :example (:use :cl :lfarm))
+    (in-package :example)
 
-    (let ((channel (lfarm:make-channel)))
-      (lfarm:submit-task channel #'+ 3 4)
-      (lfarm:receive-result channel))
+    (let ((channel (make-channel)))
+      (submit-task channel #'+ 3 4)
+      (receive-result channel))
     ;; => 7
 
-    (let ((f (lfarm:future (+ 3 4))))
-      (lfarm:force f))
+    (let ((f (future (+ 3 4))))
+      (force f))
     ;; => 7
 
-    (lfarm:plet ((x (+ 3 4))
-                 (y (+ 5 6)))
+    (plet ((x (+ 3 4))
+           (y (+ 5 6)))
       (+ x y))
     ;; => 18
 
-    (lfarm:pmapcar '1+ #(1 2 3))         ; => (2 3 4)
-    (lfarm:preduce '+ #(1 2 3))          ; => 6
-    (lfarm:pmap-reduce '1+ '+ #(1 2 3))  ; => 9
+    (pmapcar '1+ #(1 2 3))         ; => (2 3 4)
+    (preduce '+ #(1 2 3))          ; => 6
+    (pmap-reduce '1+ '+ #(1 2 3))  ; => 9
 
 Although the servers in this example are local, lfarm servers may run
 in separate Lisp instances on remote machines.
@@ -54,9 +56,6 @@ task must be
 `deftask` is just like `defun` except the function definition is
 recorded. (A Lisp implementation may record a function definition, but
 is not required to do so.)
-
-    (defpackage :example (:use :cl :lfarm))
-    (in-package :example)
 
     (deftask add (x y)
       (+ x y))
@@ -124,14 +123,14 @@ seconds. Returns true if successful and nil otherwise.
 This only stops new connections from being made. Connections in
 progress are unaffected.
 
-## Security
+### Security
 
 The purpose of an lfarm server is to execute arbitrary code, so it is
 highly advised to enable some form of security. lfarm directly
 supports Kerberos (or Active Directory) authentication. Alternatively,
 SSH tunnels may be used.
 
-### Security with SSH tunneling
+#### Security with SSH tunneling
 
     ;; On the remote machine
     (ql:quickload :lfarm-server)
@@ -152,7 +151,7 @@ Of course there is still local security to consider, as local users on
 both ends have access to the server. If this is a concern then a
 packet filtering tool such as iptables may be used.
 
-### Security with Kerberos/GSSAPI
+#### Security with Kerberos/GSSAPI
 
 The `lfarm-gss` system provides support for GSSAPI authentication. The
 `:auth` argument to `lfarm-server:start-server` and
