@@ -105,3 +105,10 @@
     (let* ((f (future (+ 3 4)))
            (g (future (+ (force f) 5))))
       (force g))))
+
+(full-test future-error-test
+  (let ((f (future (error "foo"))))
+    (signals task-execution-error
+      (force f))
+    (signals task-execution-error
+      (force f))))

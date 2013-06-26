@@ -71,8 +71,11 @@
 (defun force-future (future)
   (with-slots (result channel) future
     (with-unfulfilled (future)
-      (setf result (receive-result channel)))
-    (values-list result)))
+      (setf result (handler-case (receive-result channel)
+                     (task-execution-error (err) err))))
+    (etypecase result
+      (list (values-list result))
+      (task-execution-error (error result)))))
 
 (defun force (promise)
   (typecase promise
