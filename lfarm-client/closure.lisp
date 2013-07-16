@@ -158,9 +158,7 @@
                  :collect ``(,',var ,',(macroexpand-1 var env))))
         (let (,,@(loop
                     :for var :in lexicals
-                    :collect ``(,',var
-                                (deserialize-buffer
-                                 ,(serialize-to-buffer ,var)))))
+                    :collect ``(,',var ',,var)))
           (,',lambda-type ,@',(unsplice name) ,',lambda-list
             ,@',body)))))
 

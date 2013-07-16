@@ -39,14 +39,12 @@
       (+ x y z))))
 
 (base-test closure-a-test
-  (is (equalp `(symbol-macrolet ()
-                 (let ((x (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 3)))
-                       (y (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 4))))
-                   (lambda (z)
-                     (+ x y z))))
-              (closure-a 3)))
+  (is (equal `(symbol-macrolet ()
+                (let ((x '3)
+                      (y '4))
+                  (lambda (z)
+                    (+ x y z))))
+             (closure-a 3)))
   (is (= (+ 3 4 5)
          (funcall (eval (closure-a 3)) 5))))
 
@@ -57,14 +55,12 @@
         (+ w x y z)))))
 
 (base-test closure-b-test
-  (is (equalp `(symbol-macrolet ((w (1- x)))
-                 (let ((x (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 3)))
-                       (y (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 4))))
-                   (lambda (z)
-                     (+ w x y z))))
-              (closure-b 3)))
+  (is (equal `(symbol-macrolet ((w (1- x)))
+                (let ((x '3)
+                      (y '4))
+                  (lambda (z)
+                    (+ w x y z))))
+             (closure-b 3)))
   (is (= (+ 2 3 4 5)
          (funcall (eval (closure-b 3)) 5))))
 
@@ -75,14 +71,12 @@
       (loop repeat z collect x collect y))))
 
 (base-test closure-c-test
-  (is (equalp `(symbol-macrolet ()
-                 (let ((x (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 3)))
-                       (y (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 4))))
-                   (lambda (z)
-                     (loop repeat z collect x collect y))))
-              (closure-c 3)))
+  (is (equal `(symbol-macrolet ()
+                (let ((x '3)
+                      (y '4))
+                  (lambda (z)
+                    (loop repeat z collect x collect y))))
+             (closure-c 3)))
   (is (equal '(3 4 3 4)
              (funcall (eval (closure-c 3)) 2))))
 
@@ -94,16 +88,13 @@
         (+ x fst snd)))))
 
 (base-test closure-d-test
-  (is (equalp (closure-d 3)
-              `(symbol-macrolet ((fst (first instance))
-                                 (snd (second instance)))
-                 (let ((instance
-                        (deserialize-buffer
-                         ,(lfarm-common::serialize-to-buffer '(4 5))))
-                       (x (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 3))))
-                   (lambda ()
-                     (+ x fst snd))))))
+  (is (equal (closure-d 3)
+             `(symbol-macrolet ((fst (first instance))
+                                (snd (second instance)))
+                (let ((instance '(4 5))
+                      (x '3))
+                  (lambda ()
+                    (+ x fst snd))))))
   (is (= (+ 3 4 5)
          (funcall (eval (closure-d 3))))))
 
@@ -127,12 +118,11 @@
       (* x y))))
 
 (base-test closure-f-test
-  (is (equalp `(symbol-macrolet ()
-                 (let ((x (deserialize-buffer
-                           ,(lfarm-common::serialize-to-buffer 3))))
-                   (lambda (&key y)
-                     (* x y))))
-              (closure-f)))
+  (is (equal `(symbol-macrolet ()
+                (let ((x '3))
+                  (lambda (&key y)
+                    (* x y))))
+             (closure-f)))
   (is (= (* 3 4)
          (funcall (eval (closure-f)) :y 4))))
 
