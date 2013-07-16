@@ -142,13 +142,15 @@
     (symbol-macrolet ((z (1+ x)))
       (submit-task *channel* (lambda (y) (+ x y z)) 4)
       (is (= 11 (receive-result *channel*)))))
-  (broadcast-task (lambda () (defclass stuff ()
-                               ((x :initarg :x)
-                                (y :initarg :y)))))
-  (let ((stuff (make-instance 'stuff :x 3 :y 4)))
-    (with-slots (x y) stuff
-      (submit-task *channel* (lambda () (+ x y)))
-      (is (= 7 (receive-result *channel*))))))
+  #-lfarm.with-text-serializer
+  (progn
+    (broadcast-task (lambda () (defclass stuff ()
+                                 ((x :initarg :x)
+                                  (y :initarg :y)))))
+    (let ((stuff (make-instance 'stuff :x 3 :y 4)))
+      (with-slots (x y) stuff
+        (submit-task *channel* (lambda () (+ x y)))
+        (is (= 7 (receive-result *channel*)))))))
 
 (let ((x 3))
   (deftask closure-add-3 (y)

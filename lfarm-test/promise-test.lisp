@@ -87,7 +87,7 @@
     (is (= 7 (force f)))
     (is (eq :foo (nth-value 1 (force f))))))
 
-#+lfarm.with-closures
+#+(and lfarm.with-closures (not lfarm.with-text-serializer))
 (remote-test future-closure-test
   (let ((x 5)
         (y 6))
