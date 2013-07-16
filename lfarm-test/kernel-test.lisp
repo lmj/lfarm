@@ -120,6 +120,27 @@
     (signals invalid-task-error
       (submit-task *channel* f 1 2))))
 
+(defwith with-temp-package (name)
+  (unwind-protect/safe
+   :prepare (make-package name)
+   :main (call-body)
+   :cleanup (delete-package name)))
+
+(full-test package-test ()
+  (let ((name :lfarm-test.bar))
+    (with-temp-package (name)
+      (let ((sym (intern "FOO" name)))
+        (submit-task *channel* (lambda (x) x) sym)
+        (is (eq sym (receive-result *channel*)))))))
+
+#+lfarm.with-closures
+(full-test package-test/closure ()
+  (let ((name :lfarm-test.bar))
+    (with-temp-package (name)
+      (let ((sym (intern "FOO" name)))
+        (submit-task *channel* (lambda () sym))
+        (is (eq sym (receive-result *channel*)))))))
+
 (full-test invalid-task-test
   (signals invalid-task-error
     (submit-task* *channel* #'+))
