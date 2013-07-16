@@ -72,7 +72,7 @@
   (declare (ignore x y z))
   args)
 
-(local-test deftask-test
+(full-test deftask-test
   (submit-task *channel* 'foo 3 4)
   (is (= 7 (receive-result *channel*)))
   (submit-task *channel* #'foo 5 6)
