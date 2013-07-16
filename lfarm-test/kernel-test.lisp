@@ -176,7 +176,7 @@
 
 (remote-test broadcast-test
   (is (not (find-package :lfarm-test.foo)))
-  (broadcast-task (lambda () (defpackage :lfarm-test.foo) nil))
+  (broadcast-task (lambda () (make-package :lfarm-test.foo) nil))
   (submit-task *channel* (lambda () (and (find-package :lfarm-test.foo) 3)))
   (is (not (find-package :lfarm-test.foo)))
   (is (eql 3 (receive-result *channel*))))
