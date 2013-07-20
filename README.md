@@ -3,6 +3,12 @@
 lfarm is a Common Lisp library for distributing work across machines
 using the [lparallel] (http://lparallel.org) API.
 
+### Download
+
+The easiest way to obtain lfarm is through
+[Quicklisp](http://www.quicklisp.org/beta/). Alternatively, one may
+[clone the repository](https://github.com/lmj/lfarm.git).
+
 ### Synopsis
 
 In lparallel a _kernel_ was defined as abstract entity that schedules
