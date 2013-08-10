@@ -197,11 +197,18 @@ implementation:
 * For Active Directory:
   http://technet.microsoft.com/en-us/library/bb742433.aspx
 
-Once you have the keytab file, make sure that the environment variable
-`KRB5_KTNAME` is set to the path of the keytab file and that it is
-readable by the lfarm server instance. If not, the server will not be
-able to authenticate itself against the client which will prevent it
-from connecting.
+Once you have the keytab file, you have to make sure that it is
+loaded. The easiest way to do this is to simply call
+`CL-GSS:KRB5-REGISTER-ACCEPTOR-IDENTITY` and pass in the name of the
+keytab file.
+
+The other way is to make sure the environment variable `KRB5_KTNAME`
+is set to the path of the keytab file and that it is readable by the
+lfarm server instance.
+
+If the keytab file has not been loaded, the server will fail to
+authenticate and you will get a security error when the client
+attempts to connect to the server.
 
 ## Details
 
