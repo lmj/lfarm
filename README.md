@@ -5,14 +5,11 @@ using the [lparallel] (http://lparallel.org) API.
 
 ### Download
 
-Assuming that you have [Quicklisp](http://www.quicklisp.org/beta/) installed,
+The easiest way to obtain lfarm is through
+[Quicklisp](http://www.quicklisp.org/beta/). Alternatively, one may
+[clone the repository](https://github.com/lmj/lfarm.git).
 
-    $ cd ~/quicklisp/local-projects
-    $ git clone git://github.com/lmj/lfarm.git
-
-lfarm is known to run on Allegro, Clozure, LispWorks, and SBCL.
-
-### Kernel
+### Synopsis
 
 In lparallel a _kernel_ was defined as abstract entity that schedules
 and executes tasks. lparallel implements it with a thread pool, while
@@ -29,10 +26,26 @@ in lfarm it is implemented with a set of servers that execute tasks.
                                               ("127.0.0.1" 22222))))
 
     ;; Use the lparallel API.
-    (let ((channel (lfarm:make-channel)))
-      (lfarm:submit-task channel #'+ 3 4)
-      (lfarm:receive-result channel))
+    (defpackage :example (:use :cl :lfarm))
+    (in-package :example)
+
+    (let ((channel (make-channel)))
+      (submit-task channel #'+ 3 4)
+      (receive-result channel))
     ;; => 7
+
+    (let ((f (future (+ 3 4))))
+      (force f))
+    ;; => 7
+
+    (plet ((x (+ 3 4))
+           (y (+ 5 6)))
+      (+ x y))
+    ;; => 18
+
+    (pmapcar '1+ #(1 2 3))         ; => (2 3 4)
+    (preduce '+ #(1 2 3))          ; => 6
+    (pmap-reduce '1+ '+ #(1 2 3))  ; => 9
 
 Although the servers in this example are local, lfarm servers may run
 in separate Lisp instances on remote machines.
@@ -50,9 +63,6 @@ task must be
 recorded. (A Lisp implementation may record a function definition, but
 is not required to do so.)
 
-    (defpackage :example (:use :cl :lfarm))
-    (in-package :example)
-
     (deftask add (x y)
       (+ x y))
 
@@ -63,9 +73,6 @@ is not required to do so.)
 
 `submit-task` notices that `add` was defined with `deftask` and
 converts it to a named lambda before submitting it to a server.
-
-`deftask*` is a variant of `deftask` which records the function body
-without defining the function.
 
 To define `add` remotely use `broadcast-task`, which executes a given
 task on all servers.
@@ -91,12 +98,12 @@ the nickname `lfarm`. It exports the [lparallel kernel
 API](http://lparallel.org/api/kernel) with the following differences.
 
 * tasks have the aforementioned restrictions placed upon them
-* the addition of `deftask` and its non-locally-defining cousin `deftask*`
+* the addition of `deftask`
 * `make-kernel` expects addresses, and lacks the `:context` and
   `:bindings` arguments
 * `task-handler-bind` does not exist
 * `*debug-tasks-p*` and `*kernel-spin-count*` exist but have no effect
-* `submit-task` is a macro that wraps `submit-task*` (explained below)
+* `submit-task` is a macro that wraps `submit-task*` (see the Details section)
 * the addition of `broadcast-task` which similarly wraps `broadcast-task*`
 * `task-execution-error` is signaled when a task fails on a remote
 server, instead of the actual error (which may not have local meaning)
@@ -122,14 +129,14 @@ seconds. Returns true if successful and nil otherwise.
 This only stops new connections from being made. Connections in
 progress are unaffected.
 
-## Security
+### Security
 
 The purpose of an lfarm server is to execute arbitrary code, so it is
 highly advised to enable some form of security. lfarm directly
 supports Kerberos (or Active Directory) authentication. Alternatively,
 SSH tunnels may be used.
 
-### Security with SSH tunneling
+#### Security with SSH tunneling
 
     ;; On the remote machine
     (ql:quickload :lfarm-server)
@@ -150,7 +157,7 @@ Of course there is still local security to consider, as local users on
 both ends have access to the server. If this is a concern then a
 packet filtering tool such as iptables may be used.
 
-### Security with Kerberos/GSSAPI
+#### Security with Kerberos/GSSAPI
 
 The `lfarm-gss` system provides support for GSSAPI authentication. The
 `:auth` argument to `lfarm-server:start-server` and

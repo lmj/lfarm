@@ -30,7 +30,8 @@
 
 (defsystem :lfarm-common
   :description
-  "Common components of lfarm, a library for distributing work across machines."
+  "(private) Common components of lfarm, a library for distributing
+work across machines."
   :long-description "See http://github.com/lmj/lfarm"
   :version "0.1.0"
   :licence "BSD"

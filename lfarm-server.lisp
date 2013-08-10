@@ -79,46 +79,62 @@ closure in which those variables are bound to the captured values."
 
 ;;;; package generator
 
-;;; Allegro doesn't signal PACKAGE-ERROR for an undefined package.
-;;; Work around by parsing the error description string.
-#+allegro
+;;; Allegro and ABCL signal `reader-error' for a missing package
+;;; during `read'. We must parse the report string in order to get the
+;;; package name.
+#+(and (or abcl allegro) lfarm.with-text-serializer)
 (progn
-  (defun match-delimited-seq (delim seq left-match right-match)
-    ;; (match-delimited-seq #\! "hello !want this! world" "hello " " world")
+  (defparameter *match-around* #+abcl '("The package \"" "\" can't be found.")
+                               #+allegro '("Package \"" "\" not found"))
+
+  (defun match-around (seq left right)
+    ;; (match-around "hello !want this! world" "hello !" "! world")
     ;; => "want this"
-    (when-let* ((left-match-pos (search left-match seq))
-                (left-delim (let ((pos (+ left-match-pos (length left-match))))
-                              (and (eql (elt seq pos) delim) pos)))
-                (right-delim (position delim seq :start (1+ left-delim)))
-                (right-match-pos (1+ right-delim))
-                (end-pos (+ right-match-pos (length right-match))))
-      (unless (mismatch right-match seq
-                        :start2 right-match-pos
-                        :end2 (min end-pos (length seq)))
-        (subseq seq (1+ left-delim) right-delim))))
+    (when-let* ((left-pos (search left seq))
+                (match-pos (+ left-pos (length left)))
+                (right-pos (search right seq :start2 match-pos)))
+      (subseq seq match-pos right-pos)))
 
   (defun extract-package-name (err)
-    (let ((desc (princ-to-string err)))
-      (or (match-delimited-seq #\" desc "Package " " not found")
-          (match-delimited-seq #\" desc "" " is not a package")))))
+    (apply #'match-around (princ-to-string err) *match-around*))
 
-(defun make-package* (pkg)
-  (info "creating package" pkg)
-  (make-package pkg :use nil))
+  (defwith with-missing-package-handler (action)
+    (handler-bind ((reader-error
+                    (lambda (err)
+                      (when-let (name (extract-package-name err))
+                        (funcall action name)))))
+      (call-body))))
+
+;;; Allegro signals `type-error' for a missing package during
+;;; `cl-store:restore'. According to Franz, if package `foo' does not
+;;; exist then `:foo' is not a package designator, which is why
+;;; (intern "BAR" :foo) signals a `type-error'. `cl-store:restore'
+;;; calls `intern' when restoring a symbol.
+#+(and allegro (not lfarm.with-text-serializer))
+(defwith with-missing-package-handler (action)
+  (handler-bind ((type-error
+                  (lambda (err)
+                    (when (eq 'package (type-error-expected-type err))
+                      (funcall action (type-error-datum err))))))
+    (call-body)))
+
+;;; In all other cases `package-error' is signaled for a missing package.
+#-(or (and (or abcl allegro) lfarm.with-text-serializer)
+      (and allegro (not lfarm.with-text-serializer)))
+(defwith with-missing-package-handler (action)
+  (handler-bind ((package-error
+                  (lambda (err)
+                    (funcall action (package-error-package err)))))
+    (call-body)))
 
 (defwith with-package-generator ()
   (with-tag :retry
-    (handler-bind ((package-error
-                    (lambda (err)
-                      (make-package* (package-error-package err))
-                      (go :retry)))
-                   #+allegro
-                   ((or reader-error type-error)
-                    (lambda (err)
-                      (when-let (name (extract-package-name err))
-                        (make-package* name)
-                        (go :retry)))))
-      (call-body))))
+    (flet ((make-package-and-retry (name)
+             (info "creating package" name)
+             (make-package name :use nil)
+             (go :retry)))
+      (with-missing-package-handler (#'make-package-and-retry)
+        (call-body)))))
 
 ;;;; task category tracking
 

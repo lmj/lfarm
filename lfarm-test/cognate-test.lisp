@@ -75,6 +75,7 @@
               (pmap 'vector (lambda (x) (* x x)) #(3 4 5 6))))
   (is (equalp (map  'vector (lambda (x) (* x x)) '(3 4 5 6))
               (pmap 'vector (lambda (x) (* x x)) '(3 4 5 6))))
+  #-lfarm.with-text-serializer
   (let ((type '(simple-array fixnum (*))))
     (is (equalp (map  type (lambda (x) (* x x)) #(3 4 5 6))
                 (pmap type (lambda (x) (* x x)) #(3 4 5 6))))
