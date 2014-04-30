@@ -75,9 +75,6 @@
            #:invoke-transfer-error)
   (:import-from #:alexandria
                 #:simple-style-warning)
-  (:import-from #:bordeaux-threads
-                #:make-lock
-                #:with-lock-held)
   (:import-from #:lparallel.queue
                 #:make-queue
                 #:push-queue

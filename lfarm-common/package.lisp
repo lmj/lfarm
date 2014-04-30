@@ -60,6 +60,13 @@
            #:alias-macro
            #:alias-function
            #:unsplice)
+  ;; threads
+  (:export #:make-thread
+           #:make-lock
+           #:with-lock-held
+           #:current-thread
+           #:destroy-thread
+           #:with-lock-predicate/wait)
   ;; log
   (:export #:info
            #:bad
@@ -103,11 +110,14 @@
                 #:when-let
                 #:when-let*
                 #:named-lambda)
+  (:import-from #:bordeaux-threads
+                #:make-thread
+                #:make-lock
+                #:with-lock-held
+                #:current-thread
+                #:destroy-thread)
   (:import-from #:usocket
                 #:timeout-error
                 #:unknown-error
                 #:connection-aborted-error
-                #:connection-refused-error)
-  (:import-from #:bordeaux-threads
-                #:make-lock
-                #:with-lock-held))
+                #:connection-refused-error))

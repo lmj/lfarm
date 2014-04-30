@@ -33,13 +33,7 @@
    "A server accepts tasks, executes them, and returns the results.")
   (:use #:cl
         #:lfarm-common)
-  (:export #:start-server)
-  (:import-from #:bordeaux-threads
-                #:make-thread
-                #:make-lock
-                #:with-lock-held
-                #:current-thread
-                #:destroy-thread))
+  (:export #:start-server))
 
 (in-package #:lfarm-server)
 
@@ -76,13 +70,6 @@ closure in which those variables are bound to the captured values."
        (lambda ()
          (let ,(mapcar #'list vars syms)
            ,@body)))))
-
-(defmacro with-lock-predicate/wait (lock predicate &body body)
-  ;; predicate intentionally evaluated twice
-  `(when ,predicate
-     (with-lock-held (,lock)
-       (when ,predicate
-         ,@body))))
 
 ;;;; package generator
 

@@ -45,10 +45,7 @@
            #:*ssh-user*
            #:*boot-form*)
   (:import-from #:external-program
-                #:run)
-  (:import-from #:bordeaux-threads
-                #:make-thread
-                #:destroy-thread))
+                #:run))
 
 (in-package #:lfarm-launcher)
 

@@ -41,23 +41,9 @@
            #:force
            #:fulfill
            #:fulfilledp
-           #:chain)
-  (:import-from #:bordeaux-threads
-                #:make-lock
-                #:with-lock-held))
+           #:chain))
 
 (in-package #:lfarm-client.promise)
-
-;;;; util
-
-(defmacro with-lock-predicate/wait (lock predicate &body body)
-  ;; predicate intentionally evaluated twice
-  `(when ,predicate
-     (with-lock-held (,lock)
-       (when ,predicate
-         ,@body))))
-
-;;;; promises
 
 ;;; Avoid `defmethod' since there are outstanding issues with
 ;;; concurrent method calls.

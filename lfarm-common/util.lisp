@@ -78,3 +78,10 @@
                 (and ,timeout-value
                      (expiredp ,start ,timeout-value))))
          ,@body))))
+
+(defmacro with-lock-predicate/wait (lock predicate &body body)
+  ;; predicate intentionally evaluated twice
+  `(when ,predicate
+     (with-lock-held (,lock)
+       (when ,predicate
+         ,@body))))
