@@ -44,6 +44,7 @@ in lfarm it is implemented with a set of servers that execute tasks.
     ;; => 18
 
     (pmapcar '1+ #(1 2 3))         ; => (2 3 4)
+    (pmapcar #'1+ #(1 2 3))        ; => (2 3 4)
     (preduce '+ #(1 2 3))          ; => 6
     (pmap-reduce '1+ '+ #(1 2 3))  ; => 9
 
@@ -86,7 +87,7 @@ servers.
 
 Limited support for closures is available on SBCL, CCL, LispWorks, and
 Allegro. Lexical variables and symbol macrolets are captured, but
-`flet` functions are not.
+lexical functions (`flet`, `labels`) are not.
 
 Tasks are not macroexpanded in order to ensure portability across
 clients and servers.
