@@ -37,12 +37,10 @@
         #:lfarm-client
         #:lfarm-launcher
         #:lfarm-admin
-        #:lfarm-1am)
+        #:lfarm-test.1am)
   (:export #:execute))
 
 (in-package #:lfarm-test)
-
-(in-suite* :lfarm-test)
 
 (defvar *local-host* "127.0.0.1")
 (defvar *remote-host* "127.0.0.1")
@@ -196,8 +194,6 @@
 
 (defmacro base-test (name &body body)
   `(test ,name
-     (format t "~&~a~%" ',name)
-     (finish-output)
      (with-test-env
        ,@body)))
 
@@ -251,4 +247,4 @@ Ensure that all symbols are in the CL or CL-USER package.
 
 `wait-interval' -- Seconds to wait before verifying that all threads
 have exited gracefully."
-  (run!))
+  (run))
