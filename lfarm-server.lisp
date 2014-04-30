@@ -77,7 +77,16 @@ closure in which those variables are bound to the captured values."
          (let ,(mapcar #'list vars syms)
            ,@body)))))
 
+(defmacro with-lock-predicate/wait (lock predicate &body body)
+  ;; predicate intentionally evaluated twice
+  `(when ,predicate
+     (with-lock-held (,lock)
+       (when ,predicate
+         ,@body))))
+
 ;;;; package generator
+
+(defvar *package-creation-lock* (make-lock))
 
 ;;; Allegro and ABCL signal `reader-error' for a missing package
 ;;; during `read'. We must parse the report string in order to get the
@@ -131,7 +140,9 @@ closure in which those variables are bound to the captured values."
   (with-tag :retry
     (flet ((make-package-and-retry (name)
              (info "creating package" name)
-             (make-package name :use nil)
+             (with-lock-predicate/wait
+                 *package-creation-lock* (not (find-package name))
+               (make-package name :use nil))
              (go :retry)))
       (with-missing-package-handler (#'make-package-and-retry)
         (call-body)))))
