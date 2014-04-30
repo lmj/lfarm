@@ -1,4 +1,4 @@
-;;; Copyright (c) 2013, James M. Lawrence. All rights reserved.
+;;; Copyright (c) 2014, James M. Lawrence. All rights reserved.
 ;;;
 ;;; Redistribution and use in source and binary forms, with or without
 ;;; modification, are permitted provided that the following conditions
@@ -28,37 +28,14 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#+(or sbcl ccl allegro lispworks)
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (pushnew :lfarm.with-closures *features*))
-
-(defsystem :lfarm-client
-  :description
-  "Client component of lfarm, a library for distributing work across machines."
-  :long-description "See http://github.com/lmj/lfarm"
-  :version "0.1.0"
-  :licence "BSD"
-  :author "James M. Lawrence <llmjjmll@gmail.com>"
-  :depends-on (:usocket
-               :lparallel
-               :lfarm-common
-               #+lfarm.with-hu-walker
-               :hu.dwim.walker)
-  :serial t
-  :components ((:module "lfarm-client"
-                :serial t
-                :components ((:file "kernel")
-                             (:file "lambda")
-#+lfarm.with-closures        (:file "closure")
-                             (:file "promise")
-                             (:file "cognate")
-                             (:file "package")))))
-
-(defmethod perform ((o test-op) (c (eql (find-system :lfarm-client))))
-  (declare (ignore o c))
-  (load-system '#:lfarm-test)
-  (test-system '#:lfarm-test))
-
-(defmethod perform :after ((o load-op) (c (eql (find-system :lfarm-client))))
-  (declare (ignore o c))
-  (pushnew :lfarm-client *features*))
+(defpackage #:lfarm-test
+  (:documentation
+   "Test suite for lfarm.")
+  (:use #:cl
+        #:lfarm-common
+        #:lfarm-server
+        #:lfarm-client
+        #:lfarm-launcher
+        #:lfarm-admin
+        #:lfarm-test.1am)
+  (:export #:execute))

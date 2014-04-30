@@ -42,8 +42,6 @@
    "(private) Common components for lfarm.")
   (:use #:cl
         #:lfarm-common.data-transport)
-  (:import-from #:usocket
-                #:connection-refused-error)
   ;; util
   (:export #:with-gensyms
            #:when-let
@@ -61,8 +59,7 @@
            #:timeout-expired-p
            #:alias-macro
            #:alias-function
-           #:unsplice
-           #:import-now)
+           #:unsplice)
   ;; log
   (:export #:info
            #:bad
@@ -99,4 +96,18 @@
            #:receive-object
            #:serialize-to-buffer
            #:deserialize-buffer
-           #:receive-serialized-buffer))
+           #:receive-serialized-buffer)
+  ;; imports
+  (:import-from #:alexandria
+                #:with-gensyms
+                #:when-let
+                #:when-let*
+                #:named-lambda)
+  (:import-from #:usocket
+                #:timeout-error
+                #:unknown-error
+                #:connection-aborted-error
+                #:connection-refused-error)
+  (:import-from #:bordeaux-threads
+                #:make-lock
+                #:with-lock-held))

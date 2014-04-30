@@ -30,10 +30,6 @@
 
 (in-package #:lfarm-common)
 
-(import-now usocket:timeout-error
-            usocket:unknown-error
-            usocket:connection-aborted-error)
-
 (defvar *auth* nil)
 
 (defvar *connect-retry-interval* 0.25)

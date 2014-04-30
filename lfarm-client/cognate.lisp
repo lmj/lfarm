@@ -28,10 +28,25 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-client.cognate)
+(defpackage #:lfarm-client.cognate
+  (:documentation
+   "Promises and futures.")
+  (:use #:cl
+        #:lfarm-common
+        #:lfarm-client.kernel
+        #:lfarm-client.promise)
+  (:export #:plet
+           #:pmap
+           #:pmapcar
+           #:pmap-into
+           #:preduce
+           #:preduce-partial
+           #:pmap-reduce)
+  (:import-from #:lfarm-client.kernel
+                #:maybe-convert-task
+                #:maybe-convert-task-form))
 
-(import-now lfarm-client.kernel::maybe-convert-task
-            lfarm-client.kernel::maybe-convert-task-form)
+(in-package #:lfarm-client.cognate)
 
 ;;;; plet
 

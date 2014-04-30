@@ -44,7 +44,7 @@ work across machines."
   :serial t
   :components ((:module "lfarm-common"
                 :serial t
-                :components ((:file "packages")
+                :components ((:file "package")
                              (:file "error")
                              (:file "util")
                              (:file "unwind-protect")

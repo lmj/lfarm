@@ -47,6 +47,7 @@
   :components ((:module "lfarm-test"
                 :serial t
                 :components ((:file "1am")
+                             (:file "package")
                              (:file "base")
                              (:file "kernel-test")
 #+lfarm.with-closures        (:file "closure-test")

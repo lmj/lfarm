@@ -30,9 +30,6 @@
 
 (in-package #:lfarm-common)
 
-(import-now bordeaux-threads:make-lock
-            bordeaux-threads:with-lock-held)
-
 (defvar *log-level* :error
   "Set to :error to log only errors; set to :info for verbosity.")
 

@@ -43,13 +43,14 @@
            #:*ssh-executable*
            #:*ssh-options*
            #:*ssh-user*
-           #:*boot-form*))
+           #:*boot-form*)
+  (:import-from #:external-program
+                #:run)
+  (:import-from #:bordeaux-threads
+                #:make-thread
+                #:destroy-thread))
 
 (in-package #:lfarm-launcher)
-
-(import-now external-program:run
-            bordeaux-threads:make-thread
-            bordeaux-threads:destroy-thread)
 
 ;;;; remote servers
 

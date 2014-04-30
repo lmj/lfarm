@@ -28,18 +28,6 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(defpackage #:lfarm-test
-  (:documentation
-   "Test suite for lfarm.")
-  (:use #:cl
-        #:lfarm-common
-        #:lfarm-server
-        #:lfarm-client
-        #:lfarm-launcher
-        #:lfarm-admin
-        #:lfarm-test.1am)
-  (:export #:execute))
-
 (in-package #:lfarm-test)
 
 (defvar *local-host* "127.0.0.1")

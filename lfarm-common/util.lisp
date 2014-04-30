@@ -30,10 +30,6 @@
 
 (in-package #:lfarm-common)
 
-(defmacro import-now (&rest symbols)
-  `(eval-when (:compile-toplevel :load-toplevel :execute)
-     (import ',symbols)))
-
 (defmacro alias-macro (alias orig)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
      (setf (macro-function ',alias) (macro-function ',orig))
@@ -45,11 +41,6 @@
      (define-compiler-macro ,alias (&rest args)
        `(,',orig ,@args))
      ',alias))
-
-(alias-macro with-gensyms alexandria:with-gensyms)
-(alias-macro when-let alexandria:when-let)
-(alias-macro when-let* alexandria:when-let*)
-(alias-macro named-lambda alexandria:named-lambda)
 
 (defmacro repeat (n &body body)
   `(loop :repeat ,n :do (progn ,@body)))

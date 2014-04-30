@@ -28,14 +28,62 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-client.kernel)
+(defpackage #:lfarm-client.kernel
+  (:documentation
+   "Encompasses the scheduling and execution of remote tasks by
+    connecting to a set of servers.")
+  (:use #:cl
+        #:lfarm-common)
+  (:export #:make-kernel
+           #:check-kernel
+           #:end-kernel
+           #:kernel-worker-count
+           #:kernel-name)
+  (:export #:make-channel
+           #:submit-task
+           #:submit-timeout
+           #:cancel-timeout
+           #:receive-result
+           #:try-receive-result
+           #:do-fast-receives
+           #:kill-tasks
+           #:task-categories-running)
+  (:export #:*kernel*
+           #:*kernel-spin-count*
+           #:*task-category*
+           #:*task-priority*
+           #:*debug-tasks-p*)
+  (:export #:kernel
+           #:channel
+           #:no-kernel-error
+           #:kernel-creation-error
+           #:task-killed-error)
+  ;; specific to lfarm
+  (:export #:deftask
+           #:deftask*
+           #:submit-task*
+           #:broadcast-task
+           #:broadcast-task*
+           #:task-execution-error
+           #:invalid-task-error)
+  ;; present in lparallel.kernel but not available in lfarm
+  #+(or)
+  (:export #:kernel-bindings
+           #:kernel-context
+           #:task-handler-bind
+           #:transfer-error
+           #:invoke-transfer-error)
+  (:import-from #:alexandria
+                #:simple-style-warning)
+  (:import-from #:bordeaux-threads
+                #:make-lock
+                #:with-lock-held)
+  (:import-from #:lparallel.queue
+                #:make-queue
+                #:push-queue
+                #:pop-queue))
 
-(import-now alexandria:simple-style-warning
-            bordeaux-threads:make-lock
-            bordeaux-threads:with-lock-held
-            lparallel.queue:make-queue
-            lparallel.queue:push-queue
-            lparallel.queue:pop-queue)
+(in-package #:lfarm-client.kernel)
 
 ;;;; util
 

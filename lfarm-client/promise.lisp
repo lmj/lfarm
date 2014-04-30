@@ -28,10 +28,25 @@
 ;;; (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;;; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-(in-package #:lfarm-client.promise)
+(defpackage #:lfarm-client.promise
+  (:documentation
+   "Promises and futures.")
+  (:use #:cl
+        #:lfarm-common
+        #:lfarm-client.kernel)
+  (:export #:promise
+           #:future
+           #:speculate
+           #:delay
+           #:force
+           #:fulfill
+           #:fulfilledp
+           #:chain)
+  (:import-from #:bordeaux-threads
+                #:make-lock
+                #:with-lock-held))
 
-(import-now bordeaux-threads:make-lock
-            bordeaux-threads:with-lock-held)
+(in-package #:lfarm-client.promise)
 
 ;;;; util
 

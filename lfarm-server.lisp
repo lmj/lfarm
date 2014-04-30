@@ -33,15 +33,15 @@
    "A server accepts tasks, executes them, and returns the results.")
   (:use #:cl
         #:lfarm-common)
-  (:export #:start-server))
+  (:export #:start-server)
+  (:import-from #:bordeaux-threads
+                #:make-thread
+                #:make-lock
+                #:with-lock-held
+                #:current-thread
+                #:destroy-thread))
 
 (in-package #:lfarm-server)
-
-(import-now bordeaux-threads:make-thread
-            bordeaux-threads:make-lock
-            bordeaux-threads:with-lock-held
-            bordeaux-threads:current-thread
-            bordeaux-threads:destroy-thread)
 
 ;;;; util
 
