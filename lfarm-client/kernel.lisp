@@ -586,6 +586,7 @@ return value is the number of tasks that would have been killed if
 The difference is that `submit-timeout' does not occupy a remote server.
 
 A timeout object is returned, which may be passed to `cancel-timeout'."
+  (declare (notinline lparallel:submit-timeout))
   (lparallel:submit-timeout (internal-channel channel)
                             timeout-seconds
                             timeout-result))
@@ -600,7 +601,23 @@ ignored. If the timeout has expired on its own then `cancel-timeout'
 will have no effect.
 
 `cancel-timeout' is not available in ABCL."
+  (declare (notinline lparallel:cancel-timeout))
   (lparallel:cancel-timeout timeout timeout-result))
+
+(defun deprecated-timeout ()
+  (simple-style-warning
+   "`submit-timeout' and `cancel-timeout' are deprecated; use the new~%~
+   `:timeout' option in `try-receive-result'."))
+
+(define-compiler-macro submit-timeout (&whole whole &rest args)
+  (declare (ignore args))
+  (deprecated-timeout)
+  whole)
+
+(define-compiler-macro cancel-timeout (&whole whole &rest args)
+  (declare (ignore args))
+  (deprecated-timeout)
+  whole)
 
 (defmacro do-fast-receives ((result channel count) &body body)
   "Receive `count' number of results from `channel', executing `body'
