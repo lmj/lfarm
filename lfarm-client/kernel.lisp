@@ -456,9 +456,10 @@ lambda form."
                     (error 'task-killed-error))))
     (call-body)))
 
-(defun internal-try-receive (channel)
+(defun internal-try-receive (channel timeout)
   (with-kill-translator
-    (lparallel:try-receive-result (internal-channel channel))))
+    (lparallel:try-receive-result (internal-channel channel)
+                                  :timeout timeout)))
 
 (defun internal-receive (channel)
   (with-kill-translator
@@ -471,12 +472,12 @@ lambda form."
                             :desc (task-error-data-desc result)))
     (otherwise result)))
 
-(defun try-receive-result (channel)
+(defun try-receive-result (channel &key timeout)
   "Non-blocking version of `receive-result'.
 
 If a result is available then it is returned as the primary value
 in (values result t). Otherwise (values nil nil) is returned."
-  (multiple-value-bind (result presentp) (internal-try-receive channel)
+  (multiple-value-bind (result presentp) (internal-try-receive channel timeout)
     (if presentp
         (values (unwrap-result result) t)
         (values nil nil))))

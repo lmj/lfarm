@@ -335,6 +335,24 @@
     (is (null a))
     (is (null b))))
 
+#-lparallel.without-bordeaux-threads-condition-wait-timeout
+(local-test try-receive-result-timeout-test
+  (submit-task *channel*
+               (lambda ()
+                 (sleep 1.0)
+                 99))
+  (let ((flag nil))
+    (make-thread (lambda ()
+                   (sleep 0.25)
+                   (setf flag t)))
+    (multiple-value-bind (a b) (try-receive-result *channel* :timeout 0.5)
+      (is (null a))
+      (is (null b)))
+    (is (eq t flag))
+    (multiple-value-bind (a b) (try-receive-result *channel* :timeout 1.0)
+      (is (= 99 a))
+      (is (eq t b)))))
+
 (local-test multi-receive-test
   (submit-task *channel* '+ 3 4)
   (submit-task *channel* '+ 5 6)
