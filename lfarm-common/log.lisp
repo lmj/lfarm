@@ -48,7 +48,7 @@
         (*print-pretty* nil)
         (*print-circle* t))
     (with-lock-held (*log-lock*)
-      (format *log-stream* "~&~a ~a ~a ~{~a~^ ~}~%"
+      (format *log-stream* "~&~a ~a ~a ~{~s~^ ~}~%"
               timestamp level (string-downcase (package-name package)) args)
       (finish-output *log-stream*))))
 
