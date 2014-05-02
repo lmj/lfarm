@@ -126,9 +126,9 @@ closure in which those variables are bound to the captured values."
 (defwith with-package-generator ()
   (with-tag :retry
     (flet ((make-package-and-retry (name)
-             (info "creating package" name)
              (with-lock-predicate/wait
                  *package-creation-lock* (not (find-package name))
+               (info "creating package" name)
                (make-package name :use nil))
              (go :retry)))
       (with-missing-package-handler (#'make-package-and-retry)
