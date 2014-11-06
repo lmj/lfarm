@@ -121,3 +121,5 @@
                 #:unknown-error
                 #:connection-aborted-error
                 #:connection-refused-error))
+
+(in-package #:lfarm-common)

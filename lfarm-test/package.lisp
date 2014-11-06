@@ -39,3 +39,5 @@
         #:lfarm-admin
         #:lfarm-test.1am)
   (:export #:execute))
+
+(in-package #:lfarm-test)
