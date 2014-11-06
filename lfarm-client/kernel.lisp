@@ -88,12 +88,6 @@
   (let ((*random-state* (make-random-state t)))
     (random (1+ most-positive-fixnum))))
 
-(defun make-queue/fill (list)
-  (let ((queue (make-queue)))
-    (dolist (elem list)
-      (push-queue elem queue))
-    queue))
-
 (defun interact (&rest prompt)
   "Read from user and eval."
   (apply #'format *query-io* prompt)
@@ -288,7 +282,7 @@ priority. Default value is `:default'.")
 
 `name' is a string for identifying the connection threads."
   (let* ((addresses (ensure-addresses addresses))
-         (addresses-queue (make-queue/fill addresses))
+         (addresses-queue (make-queue :initial-contents addresses))
          (internal-kernel (make-internal-kernel
                            (length addresses)
                            :bindings (make-bindings addresses-queue)
