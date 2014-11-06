@@ -111,7 +111,7 @@ is bound to nil (no future is created)."
            ,@body)))))
 
 (defun zip/vector (seqs)
-  (apply #'map 'vector (lambda (&rest args) args) seqs))
+  (apply #'map 'vector #'list seqs))
 
 (defun find-min-length (seqs)
   (reduce #'min seqs :key #'length))
