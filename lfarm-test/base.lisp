@@ -162,7 +162,7 @@
 
 (defun local-lisp ()
   (or #+sbcl (list (first sb-ext:*posix-argv*) "--eval")
-      #+ccl (list (first (ccl::command-line-arguments)) "--eval")
+      #+ccl (list (first ccl:*command-line-argument-list*) "--eval")
       #+lispworks (list (first sys:*line-arguments-list*) "-eval")
       #+allegro (list (first (sys:command-line-arguments)) "-e")
       #+ecl (list (si:argv 0) "-eval")
