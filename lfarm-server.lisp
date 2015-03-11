@@ -257,18 +257,13 @@ closure in which those variables are bound to the captured values."
 
 ;;;; responses
 
-(defgeneric respond (message stream))
-
-(defmethod respond ((message (eql :ping)) stream)
-  (send-object :pong stream))
-
-(defmethod respond ((message (eql :task-loop)) stream)
-  (send-object :in-task-loop stream)
-  (with-task-index
-    (task-loop stream)))
-
-(defmethod respond ((message (eql :kill-tasks)) stream)
-  (kill-tasks (receive-object stream)))
+(defun respond (message stream)
+  (ecase message
+    (:ping (send-object :pong stream))
+    (:task-loop (send-object :in-task-loop stream)
+                (with-task-index
+                  (task-loop stream)))
+    (:kill-tasks (kill-tasks (receive-object stream)))))
 
 ;;;; dispatch
 
