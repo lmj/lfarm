@@ -125,26 +125,21 @@ is bound to nil (no future is created)."
          collect (pop ,list)
          collect (pop ,list)))
 
-(defmacro pop-keyword-args (list &rest keys)
-  (check-type list symbol)
-  (with-gensyms (plist)
-    `(when-let (,plist (pop-plist ,list))
-       (destructuring-bind (&key ,@keys) ,plist
-         (values ,@keys)))))
+(defun %parse-options (args)
+  (destructuring-bind (&key size parts) (pop-plist args)
+    (values args size parts)))
 
-(defmacro pop-options (list)
-  `(pop-keyword-args ,list size parts))
+(defun parse-options (args)
+  (multiple-value-bind (seqs size parts) (%parse-options args)
+    (unless seqs
+      (error "Input sequence(s) for parallelization not found."))
+    (unless size
+      (setf size (find-min-length seqs)))
+    (setf parts (get-parts-hint parts))
+    (values seqs size parts)))
 
-(defmacro with-parsed-options ((seqs size parts-hint) &body body)
-  (check-type seqs symbol)
-  (check-type size symbol)
-  (check-type parts-hint symbol)
-  `(multiple-value-bind (,size ,parts-hint) (pop-options ,seqs)
-     (unless ,seqs
-       (error "Input sequence(s) for parallelization not found."))
-     (unless ,size
-       (setf ,size (find-min-length ,seqs)))
-     (setf ,parts-hint (get-parts-hint ,parts-hint))
+(defmacro with-parsed-options ((args size parts) &body body)
+  `(multiple-value-bind (,args ,size ,parts) (parse-options ,args)
      ,@body))
 
 (defun subdivide-array (array size parts-hint)
@@ -310,9 +305,9 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
                  (declare (ignore ,x))
                  ,@body))))))
 
-(defun pmap-into/unparsed (result-seq task seqs)
+(defun pmap-into/unparsed (result-seq task args)
   (let ((task (maybe-convert-task task)))
-    (multiple-value-bind (size parts-hint) (pop-options seqs)
+    (multiple-value-bind (seqs size parts-hint) (%parse-options args)
       (let* ((has-fill-p (and (arrayp result-seq)
                               (array-has-fill-pointer-p result-seq)))
              (parts-hint (get-parts-hint parts-hint))
