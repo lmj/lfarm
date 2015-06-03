@@ -125,9 +125,8 @@
 
 (defwith with-local-setup (server-count)
   (with-thread-count-check (0.4)
-    (let ((addresses (loop
-                        :repeat server-count
-                        :collect (list *local-host* (next-port)))))
+    (let ((addresses (loop repeat server-count
+                           collect (list *local-host* (next-port)))))
       (with-local-servers (addresses)
         (with-kernel (*kernel* addresses)
           (let ((*channel* (make-channel)))
@@ -135,9 +134,8 @@
 
 (defwith with-remote-setup (server-count)
   (with-thread-count-check (*wait-interval*)
-    (let ((addresses (loop
-                        :repeat server-count
-                        :collect (list *remote-host* (next-port)))))
+    (let ((addresses (loop repeat server-count
+                           collect (list *remote-host* (next-port)))))
       (with-remote-servers (addresses)
         (with-kernel (*kernel* addresses)
           (let ((*channel* (make-channel)))

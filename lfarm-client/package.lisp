@@ -35,11 +35,9 @@
           (:nicknames ,@package-nicknames)
           (:use #:cl ,@list)
           (:export
-           ,@(loop
-                :for package :in list
-                :nconc (loop
-                          :for symbol :being :the :external-symbols :in package
-                          :collect (make-symbol (string symbol))))))))
+           ,@(loop for package in list
+                   nconc (loop for symbol being the external-symbols in package
+                               collect (make-symbol (string symbol))))))))
   (package #:lfarm-client (#:lfarm)
 "This is a convenience package which exports the external symbols of:
    lfarm-client.kernel

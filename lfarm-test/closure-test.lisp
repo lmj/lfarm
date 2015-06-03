@@ -67,7 +67,6 @@
 (defun closure-c (x)
   (let ((y (1+ x)))
     (closure-form (z)
-      ;; use non-keyword loop keywords
       (loop repeat z collect x collect y))))
 
 (base-test closure-c-test

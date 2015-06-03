@@ -56,9 +56,8 @@
 (defun parse-bindings (bindings)
   (let* ((pairs     (remove-if-not #'pairp bindings))
          (non-pairs (remove-if     #'pairp bindings))
-         (syms      (loop
-                       :for (name nil) :in pairs
-                       :collect (gensym (symbol-name name)))))
+         (syms      (loop for (name nil) in pairs
+                          collect (gensym (symbol-name name)))))
     (values pairs non-pairs syms)))
 
 (defmacro plet (bindings &body body)
@@ -73,14 +72,12 @@ For each (var init-form) pair, a future is created which executes
 Each `var-no-init' is bound to nil and each `var' without `init-form'
 is bound to nil (no future is created)."
   (multiple-value-bind (pairs non-pairs syms) (parse-bindings bindings)
-    `(symbol-macrolet ,(loop
-                          :for sym :in syms
-                          :for (name nil) :in pairs
-                          :collect `(,name (force ,sym)))
-       (let (,@(loop
-                  :for sym :in syms
-                  :for (nil form) :in pairs
-                  :collect `(,sym (future ,form)))
+    `(symbol-macrolet ,(loop for sym in syms
+                             for (name nil) in pairs
+                             collect `(,name (force ,sym)))
+       (let (,@(loop for sym in syms
+                     for (nil form) in pairs
+                     collect `(,sym (future ,form)))
              ,@non-pairs)
          ,@body))))
 
@@ -124,11 +121,9 @@ is bound to nil (no future is created)."
          (kernel-worker-count))))
 
 (defmacro pop-plist (list)
-  (check-type list symbol)
-  `(loop
-      :while (keywordp (car ,list))
-      :collect (pop ,list)
-      :collect (pop ,list)))
+  `(loop while (keywordp (car ,list))
+         collect (pop ,list)
+         collect (pop ,list)))
 
 (defmacro pop-keyword-args (list &rest keys)
   (check-type list symbol)
@@ -169,13 +164,11 @@ is bound to nil (no future is created)."
   ;; Create copies, in contradistinction to lparallel. Otherwise we
   ;; send unnecessary data over the wire.
   (with-parts size parts-hint
-    (loop
-       :with p := list
-       :while (next-part)
-       :collect (loop
-                   :repeat (part-size)
-                   :collect (car p)
-                   :do (setf p (cdr p))))))
+    (loop with p = list
+          while (next-part)
+          collect (loop repeat (part-size)
+                        collect (car p)
+                        do (setf p (cdr p))))))
 
 (defun make-parts (result size parts-hint)
   (etypecase result
@@ -190,12 +183,11 @@ is bound to nil (no future is created)."
 ;;;; task util
 
 (defun receive-indexed (channel count)
-  (loop
-     :with result := (make-array count)
-     :repeat count
-     :do (destructuring-bind (index . data) (receive-result channel)
-           (setf (aref result index) data))
-     :finally (return result)))
+  (loop with result = (make-array count)
+        repeat count
+        do (destructuring-bind (index . data) (receive-result channel)
+             (setf (aref result index) data))
+        finally (return result)))
 
 (defun task->fn-form (task)
   (etypecase task
@@ -238,23 +230,21 @@ is bound to nil (no future is created)."
          (mapping-task (mapping-task (subresult-type result-seq) task))
          (input-parts (make-input-parts sequences size parts-hint)))
     (with-parts size parts-hint
-      (loop
-         :for subseqs :across input-parts
-         :for part-index :from 0
-         :while (next-part)
-         :do (submit-task channel mapping-task subseqs
-                          part-index (part-size))))))
+      (loop for subseqs across input-parts
+            for part-index from 0
+            while (next-part)
+            do (submit-task channel mapping-task subseqs
+                            part-index (part-size))))))
 
 (defun pmap-into/receive (channel result-seq size parts-hint)
   (with-parts size parts-hint
     (let ((result-parts (receive-indexed channel (num-parts))))
       (with-max-fill-pointer (result-seq)
-        (loop
-           :for index :from 0
-           :while (next-part)
-           :do (replace result-seq (aref result-parts index)
-                        :start1 (part-offset)
-                        :end1 (+ (part-offset) (part-size))))))))
+        (loop for index from 0
+              while (next-part)
+              do (replace result-seq (aref result-parts index)
+                          :start1 (part-offset)
+                          :end1 (+ (part-offset) (part-size))))))))
 
 (defun pmap-into/parsed (result-seq task sequences size parts-hint)
   (let ((channel (make-channel)))
@@ -377,15 +367,14 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
   (let ((reducing-task (reducing-task task keyword-args))
         (channel (make-channel)))
     (with-parts size parts
-      (loop
-         :for result-index :from 0
-         :while (next-part)
-         :do (submit-task channel
-                          reducing-task
-                          sequence
-                          (+ start (part-offset))
-                          (+ start (part-offset) (part-size))
-                          result-index))
+      (loop for result-index from 0
+            while (next-part)
+            do (submit-task channel
+                            reducing-task
+                            sequence
+                            (+ start (part-offset))
+                            (+ start (part-offset) (part-size))
+                            result-index))
       (receive-indexed channel (num-parts)))))
 
 (defun preduce-partial/list (task sequence start size parts
@@ -393,17 +382,16 @@ Unlike `mapcar', `pmapcar' also accepts vectors."
   (let ((reducing-task (reducing-task task keyword-args))
         (channel (make-channel)))
     (with-parts size parts
-      (loop
-         :with subseq := (nthcdr start sequence)
-         :for result-index :from 0
-         :while (next-part)
-         :do (submit-task channel
-                          reducing-task
-                          subseq
-                          0
-                          (part-size)
-                          result-index)
-         :do (setf subseq (nthcdr (part-size) subseq)))
+      (loop with subseq = (nthcdr start sequence)
+            for result-index from 0
+            while (next-part)
+            do (submit-task channel
+                            reducing-task
+                            subseq
+                            0
+                            (part-size)
+                            result-index)
+               (setf subseq (nthcdr (part-size) subseq)))
       (receive-indexed channel (num-parts)))))
 
 (defun %preduce-partial (task sequence start size parts

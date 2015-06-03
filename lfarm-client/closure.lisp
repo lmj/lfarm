@@ -144,21 +144,18 @@
     (sort-symbols (remove-duplicates (append initial-syms more-syms)))))
 
 (defun find-captures (lambda-list body env)
-  (loop
-     :for sym :in (find-free-symbols lambda-list body env)
-     :if (lexical-var-p sym env)  :collect sym :into lexicals :else
-     :if (symbol-macro-p sym env) :collect sym :into symbol-macros
-     :finally (return (values lexicals symbol-macros))))
+  (loop for sym in (find-free-symbols lambda-list body env)
+        if (lexical-var-p sym env) collect sym into lexicals
+        else if (symbol-macro-p sym env) collect sym into symbol-macros
+        finally (return (values lexicals symbol-macros))))
 
 (defun make-closure-form (name lambda-list body env lexicals symbol-macros)
   (let ((lambda-type (if name 'named-lambda 'lambda)))
     ``(symbol-macrolet
-          (,,@(loop
-                 :for var :in symbol-macros
-                 :collect ``(,',var ,',(macroexpand-1 var env))))
-        (let (,,@(loop
-                    :for var :in lexicals
-                    :collect ``(,',var ',,var)))
+          (,,@(loop for var in symbol-macros
+                    collect ``(,',var ,',(macroexpand-1 var env))))
+        (let (,,@(loop for var in lexicals
+                       collect ``(,',var ',,var)))
           (,',lambda-type ,@',(unsplice name) ,',lambda-list
             ,@',body)))))
 

@@ -65,7 +65,7 @@
 (defmacro dynamic-closure (vars &body body)
   "Capture the values of the dynamic variables in `vars' and return a
 closure in which those variables are bound to the captured values."
-  (let ((syms (loop :repeat (length vars) :collect (gensym))))
+  (let ((syms (loop repeat (length vars) collect (gensym))))
     `(let ,(mapcar #'list syms vars)
        (lambda ()
          (let ,(mapcar #'list vars syms)

@@ -43,7 +43,7 @@
      ',alias))
 
 (defmacro repeat (n &body body)
-  `(loop :repeat ,n :do (progn ,@body)))
+  `(loop repeat ,n do (progn ,@body)))
 
 (defmacro with-tag (retry-tag &body body)
   "For those of us who forget RETURN-FROM inside TAGBODY."

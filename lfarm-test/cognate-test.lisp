@@ -112,21 +112,19 @@
   (* x x))
 
 (local-test pmap-parts-arg-test
-  (loop
-     :for parts :from 1 :to 8
-     :do (loop
-            :for n :from 1 :to 6
-            :do (let ((a (loop :repeat n :collect (random n))))
-                  (is (equalp ( map-into (make-array n) #'sq a)
-                              (pmap-into (make-array n) #'sq :parts parts a)))
-                  (is (equal  ( map-into (make-list n) #'sq a)
-                              (pmap-into (make-list n) #'sq :parts parts a)))
-                  (is (equalp ( map 'vector #'sq a)
-                              (pmap 'vector #'sq :parts parts a)))
-                  (is (equal  ( map 'list #'sq a)
-                              (pmap 'list #'sq :parts parts a)))
-                  (is (equal  ( mapcar #'sq a)
-                              (pmapcar #'sq :parts parts a)))))))
+  (loop for parts from 1 to 8
+        do (loop for n from 1 to 6
+                 for a = (loop repeat n collect (random n))
+                 do (is (equalp ( map-into (make-array n) #'sq a)
+                                (pmap-into (make-array n) #'sq :parts parts a)))
+                    (is (equal  ( map-into (make-list n) #'sq a)
+                                (pmap-into (make-list n) #'sq :parts parts a)))
+                    (is (equalp ( map 'vector #'sq a)
+                                (pmap 'vector #'sq :parts parts a)))
+                    (is (equal  ( map 'list #'sq a)
+                                (pmap 'list #'sq :parts parts a)))
+                    (is (equal  ( mapcar #'sq a)
+                                (pmapcar #'sq :parts parts a))))))
 
 (deftask seven ()
   7)
@@ -246,7 +244,7 @@
 
 (defmacro collect-n (n &body body)
   "Execute `body' `n' times, collecting the results into a list."
-  `(loop :repeat ,n :collect (progn ,@body)))
+  `(loop repeat ,n collect (progn ,@body)))
 
 (full-test preduce-test
   (is (equalp (reduce  (lambda (x y) (+ x y)) #(1 2 3 4 5 6))
@@ -264,13 +262,13 @@
                                  (random 10)))))
     (macrolet
         ((verify (test &rest args)
-           `(loop :for parts :from 1 :to 10 :do
-               (is (funcall ,test
-                            (reduce ,@args)
-                            (preduce ,@args)))
-               (is (funcall ,test
-                            (reduce ,@args)
-                            (preduce ,@args :from-end t))))))
+           `(loop for parts from 1 to 10
+                  do (is (funcall ,test
+                                  (reduce ,@args)
+                                  (preduce ,@args)))
+                     (is (funcall ,test
+                                  (reduce ,@args)
+                                  (preduce ,@args :from-end t))))))
       (verify #'= #'+ a)
       (verify #'= #'+ a :initial-value 0)
       (verify #'= #'+ b :key #'cdr)
